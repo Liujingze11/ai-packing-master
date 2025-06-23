@@ -1,40 +1,50 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+
 import pandas as pd
-from openai import OpenAI
 import math
+
+from openai import OpenAI
+
+from dotenv import load_dotenv
+import os
+
 
 # 初始化 Flask 和 CORS
 app = Flask(__name__)
 CORS(app)
+load_dotenv()  # 从 .env 文件加载环境变量
 
 # 读取数据
 item_df = pd.read_csv("零件尺寸表.csv")           # 包含：零件号、长度(mm)、宽度(mm)、高度(mm)、重量(kg)、材料
 box_df = pd.read_csv("包装箱类型.csv")           # 包含：箱型、内部长度(mm)、内部宽度(mm)、内部高度(mm)、最大承重(kg)
-history_df = pd.read_csv("历史包装方案.csv")     # 包含：零件号、使用箱型、数量、备注等
+history_df = pd.read_csv("历史包装方案.csv")     # 包含：方案ID,零件号,数量,使用箱型,备注
 
 # 初始化 AI 客户端
 client = OpenAI(
-    api_key="***REMOVED***",  # 请替换为你的 Key
-    base_url="https://api.deepseek.com"
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url=os.getenv("OPENAI_API_BASE")
 )
 
 # 🧮 计算最大每箱可装数量（体积+重量限制）
 def calculate_max_capacity(item, box):
+     # //取整；math.floor向下取整
     fit_l = box["内部长度(mm)"] // item["长度(mm)"]
-    fit_w = box["内部宽度(mm)"] // item["宽度(mm)"]
+    fit_w = box["内部宽度(mm)"] // item["宽度(mm)"] 
     fit_h = box["内部高度(mm)"] // item["高度(mm)"]
     max_by_volume = fit_l * fit_w * fit_h
     max_by_weight = math.floor(box["最大承重(kg)"] / item["重量(kg)"])
     return min(max_by_volume, max_by_weight)
 
+
 # 🧠 包装推荐逻辑（含装箱方案）
 def recommend_with_ai(item_id: str, quantity: int):
-    result = item_df[item_df["零件号"] == item_id]
+    result = item_df[item_df["零件号"] == item_id] # 从 item_df 数据框中筛选出零件号为 item_id 的那一行。
+
     if result.empty:
         return "❌ 未找到该零件号对应的数据。"
 
-    item = result.iloc[0]
+    item = result.iloc[0] # 获取该零件的第一行数据（只有一行的话就是它自己），类型为 pd.Series。
     item_info = {
         "零件号": item["零件号"],
         "数量": quantity,
