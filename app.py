@@ -1,165 +1,229 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import pandas as pd
-import math
-from openai import OpenAI
 from dotenv import load_dotenv
-import os
+import os, math, requests
+from openai import OpenAI
+import pandas as pd
+import traceback
 
+# 加载环境变量
+load_dotenv()
+app = Flask(__name__, static_folder="static")
 
-# 🚀 初始化 Flask 应用
-app = Flask(__name__)
-CORS(app) # 允许跨域请求（前后端分离场景下需要）
-
-# 📦 从.env文件加载环境变量（用于获取 API 密钥等）
-load_dotenv() 
-
-# 加载基础数据表
-item_df = pd.read_csv("零件尺寸表.csv")           # 零件数据：零件号、长度(mm)、宽度(mm)、高度(mm)、重量(kg)、材料
-box_df = pd.read_csv("包装箱类型.csv")           # 箱型数据：箱型、内部长度(mm)、内部宽度(mm)、内部高度(mm)、最大承重(kg)
-history_df = pd.read_csv("历史包装方案.csv")     # 历史方案：方案ID,零件号,数量,使用箱型,备注
-
-# 初始化 OpenAI 客户端（用于调用 AI 推荐）
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),    # 从环境变量读取 API 密钥
-    base_url=os.getenv("OPENAI_API_BASE")   # 可自定义为 DeepSeek 等 LLM 提供商地址
-)
-
-# 🧮 计算每种箱型最大可容纳的该零件数量（体积 + 重量限制）
-def calculate_max_capacity(item, box):
-     # //取整；math.floor向下取整
-    fit_l = box["内部长度(mm)"] // item["长度(mm)"]
-    fit_w = box["内部宽度(mm)"] // item["宽度(mm)"] 
-    fit_h = box["内部高度(mm)"] // item["高度(mm)"]
-    max_by_volume = fit_l * fit_w * fit_h  # 按体积可装的数量
-    max_by_weight = math.floor(box["最大承重(kg)"] / item["重量(kg)"])  # 按重量限制
-    return min(max_by_volume, max_by_weight)  # 返回最小值，即实际受限装箱数
-
-
-# 🧠 核心推荐逻辑，结合历史数据与 AI 模型给出装箱建议
-def recommend_with_ai(item_id: str, quantity: int):
-    
-    # 🔍 查询对应零件信息
-    result = item_df[item_df["零件号"] == item_id] # 从 item_df 数据框中筛选出零件号为 item_id 的那一行。
-    if result.empty:
-        return "❌ 未找到该零件号对应的数据。"
-
-    item = result.iloc[0] # 获取该零件的第一行数据（只有一行的话就是它自己），类型为 pd.Series。
-
-    # 🧾 构建零件信息结构，便于 Prompt 输入
-    item_info = {
-        "零件号": item["零件号"],
-        "数量": quantity,
-        "长度(mm)": item["长度(mm)"],
-        "宽度(mm)": item["宽度(mm)"],
-        "高度(mm)": item["高度(mm)"],
-        "重量(kg)": item["重量(kg)"],
-        "材料": item.get("材料", "未知")
+# 配置CORS
+CORS(app, resources={
+    r"/*": {
+        "origins": ["http://localhost:5000", "http://127.0.0.1:5000"],
+        "methods": ["GET", "POST"],
+        "allow_headers": ["Content-Type"]
     }
+})
 
-    # 过滤符合体积和重量要求的箱型（加20%安全冗余）
-    def is_suitable(row):
-        item_volume = item["长度(mm)"] * item["宽度(mm)"] * item["高度(mm)"]
-        box_volume = row["内部长度(mm)"] * row["内部宽度(mm)"] * row["内部高度(mm)"]
+print("="*50)
+print("正在启动主服务器...")
+print(f"当前工作目录: {os.getcwd()}")
 
-        total_item_volume = item_volume * quantity
-        total_item_weight = item["重量(kg)"] * quantity
+# 加载零件数据
+print("正在加载零件尺寸表...")
+try:
+    item_df = pd.read_csv("零件尺寸表.csv")
+    print(f"成功加载 {len(item_df)} 条零件记录")
+except Exception as e:
+    print(f"❌ 加载零件尺寸表失败: {e}")
+    item_df = pd.DataFrame()
 
-        # 容量与承重都预留20%安全冗余
-        effective_box_volume = box_volume * 0.8
-        effective_box_weight = row["最大承重(kg)"] * 0.8
+# 初始化OpenAI客户端
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url=os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+)
+MCP_BASE = "http://127.0.0.1:5001"
+print(f"工具服务器地址: {MCP_BASE}")
 
-        return total_item_volume <= effective_box_volume and total_item_weight <= effective_box_weight
+@app.route("/")
+def serve_page():
+    print("请求根路径，返回 index.html")
+    return send_from_directory("static", "index.html")
 
-    # 对 box_df 表中的每一行（即每个箱型）应用 is_suitable(row) 判断函数，筛选出“适合的箱型”
-    # apply(..., axis=1) 会把每一行作为一个 Series 传入 is_suitable() 中
-    # 结果是一个布尔数组（True/False），用于 DataFrame 过滤
-    # 最终得到的 suitable_boxes_df 是一个 DataFrame，包含所有满足条件的箱型
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory('static', path)
 
-    suitable_boxes_df = box_df[box_df.apply(is_suitable, axis=1)]
-    # 检查是否为空（即没有任何箱型满足要求）
-    if suitable_boxes_df.empty:
-        return "❌ 当前无可用箱型满足该零件体积与重量需求。"
+@app.route("/test")
+def test_connection():
+    return jsonify({"status": "success", "message": "主服务器运行正常"})
 
-    # 计算每种箱型最多可装数量和需要箱数
-    suitable_boxes = []
-    for _, box in suitable_boxes_df.iterrows():
-        cap = calculate_max_capacity(item, box)
-        suitable_boxes.append({
-            "箱型": box["箱型"],
-            "内部尺寸": f"{box['内部长度(mm)']}×{box['内部宽度(mm)']}×{box['内部高度(mm)']} mm",
-            "最大承重(kg)": box["最大承重(kg)"],
-            "每箱可装数量": cap,
-            "需要箱数": math.ceil(quantity / cap) if cap > 0 else "不适用"
-        })
-
-    # 提取历史装箱记录（用于增强推荐准确性）
-    history = history_df[history_df["零件号"] == item_id]
-    history_data = history.to_dict(orient="records") if not history.empty else "无历史包装记录"
-
-    # 构造 Prompt 输入，交给 LLM 推荐
-    prompt = (
-        "你是一个经验丰富的工业包装工程师。\n"
-        "以下是一个零件的信息、若干个符合要求的箱型、以及该零件的历史包装方案。\n"
-        "请你分析零件的体积、重量、材料，结合历史经验，从候选箱型中推荐最优一个。\n"
-        "此外，请你设计装箱方案，包括：\n"
-        "1）每个箱子最多能装多少个；\n"
-        "2）总共需要多少个箱子；\n"
-        "3）是否建议使用缓冲/分层/隔板等额外保护策略；\n\n"
-        f"【零件信息】:\n{item_info}\n\n"
-        f"【可选箱型列表】:\n{suitable_boxes}\n\n"
-        f"【历史包装方案】:\n{history_data}\n\n"
-        "请以以下格式输出：\n"
-        "推荐箱型：xxx\n推荐理由：xxx\n装箱方案：\n- 每箱可装：xx\n- 总共需要：xx\n- 装箱策略建议：xxx"
-    )
-
-    # 发送到 AI 模型生成推荐内容
-    try:
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[
-                {"role": "system", "content": "你是一名工业包装推荐系统。"},
-                {"role": "user", "content": prompt}
-            ],
-            stream=False
-        )
-
-        # 🛡️ 提取 LLM 响应内容
-        if hasattr(response, "choices") and len(response.choices) > 0:
-            message = response.choices[0].message
-            if hasattr(message, "content"):
-                return message.content.strip()
-            else:
-                return "⚠️ AI 返回中未找到有效内容字段（message.content）。"
-        else:
-            return "⚠️ AI 返回结构异常（无 choices）。"
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return f"⚠️ AI 调用失败：{str(e)}"
-
-
-# 🌐 创建 API 接口：POST 请求，接收用户输入并返回推荐
 @app.route("/recommend", methods=["POST"])
-def recommend_api():
-    data = request.json
-    user_input = data.get("message", "").strip()
-    tokens = user_input.split()
-
-    # ⚠️ 输入检查：必须为“零件号 数量”
-    if len(tokens) != 2:
-        return jsonify({"response": "⚠️ 输入格式错误，应为：零件号 数量，例如 A001 10"})
-
-    item_id, qty_str = tokens
+def recommend():
     try:
-        quantity = int(qty_str)
-    except:
-        return jsonify({"response": "⚠️ 数量必须为整数"})
+        print("\n" + "="*50)
+        print("收到新的推荐请求...")
+        data = request.json
+        print(f"请求数据: {data}")
+        
+        tokens = data.get("message", "").strip().split()
+        print(f"解析令牌: {tokens}")
+        
+        if len(tokens) != 2:
+            print("⚠️ 输入格式错误")
+            return jsonify({"response": "⚠️ 输入格式错误，应为：零件编号 数量 (例如：A001 10)"})
 
-    reply = recommend_with_ai(item_id, quantity)
-    return jsonify({"response": reply})
+        item_id, qty = tokens[0], tokens[1]
+        print(f"零件号: {item_id}, 数量: {qty}")
+        
+        # 验证数量是否为数字
+        try:
+            qty = int(qty)
+        except ValueError:
+            print("⚠️ 数量格式错误")
+            return jsonify({"response": "⚠️ 数量必须是整数"})
+        
+        # 查找零件
+        if item_df.empty:
+            print("❌ 零件数据未加载")
+            return jsonify({"response": "❌ 服务器数据未加载，请联系管理员"})
+            
+        item_row = item_df[item_df["零件号"] == item_id]
+        if item_row.empty:
+            print(f"❌ 未找到零件: {item_id}")
+            return jsonify({"response": f"❌ 未找到零件: {item_id}"})
 
-# ✅ 启动 Flask 服务（本地调试用）
+        item = item_row.iloc[0].to_dict()
+        print(f"零件详情: {item}")
+
+        # 获取箱型
+        print(f"请求工具服务器: {MCP_BASE}/filter_boxes")
+        try:
+            r1 = requests.post(
+                f"{MCP_BASE}/filter_boxes", 
+                json={"item_id": item_id, "quantity": qty}, 
+                timeout=5
+            )
+            r1.raise_for_status()
+            boxes = r1.json().get("boxes", [])
+            print(f"获取到 {len(boxes)} 个合适箱型")
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ 获取箱型失败: {e}")
+            return jsonify({"response": f"⚠️ 工具服务连接失败: {str(e)}"})
+        except Exception as e:
+            print(f"⚠️ 解析箱型失败: {e}")
+            return jsonify({"response": "⚠️ 解析箱型数据失败"})
+
+        if not boxes:
+            print("❌ 没有合适的箱型")
+            return jsonify({"response": "❌ 没有找到合适的包装箱型"})
+
+        # 计算每箱容量
+        print("计算每箱容量...")
+        valid_boxes = []
+        for box in boxes:
+            print(f"  处理箱型: {box.get('箱型', '未知箱型')}")
+            try:
+                cap_resp = requests.post(
+                    f"{MCP_BASE}/calculate_capacity", 
+                    json={"item": item, "box": box}, 
+                    timeout=3
+                )
+                cap_resp.raise_for_status()
+                cap_data = cap_resp.json()
+                cap = cap_data.get("capacity", 0)
+                
+                if cap > 0:
+                    print(f"    容量计算: {cap} 个/箱")
+                    box["每箱可装"] = cap
+                    box["需要箱数"] = math.ceil(qty / cap)
+                    valid_boxes.append(box)
+                else:
+                    print(f"    容量为0，跳过")
+            except requests.exceptions.RequestException as e:
+                print(f"    容量计算失败: {e}")
+        
+        if not valid_boxes:
+            print("❌ 所有箱型容量计算失败")
+            return jsonify({"response": "❌ 所有箱型容量计算失败，无法提供推荐"})
+        
+        # 获取历史记录
+        print(f"请求历史记录: {MCP_BASE}/get_history")
+        history = "无"
+        try:
+            r2 = requests.post(
+                f"{MCP_BASE}/get_history", 
+                json={"item_id": item_id}, 
+                timeout=3
+            )
+            r2.raise_for_status()
+            history_data = r2.json()
+            history = history_data.get("history", [])
+            print(f"获取到 {len(history) if isinstance(history, list) else 0} 条历史记录")
+        except requests.exceptions.RequestException as e:
+            print(f"⚠️ 获取历史记录失败: {e}")
+            history = "无"
+
+        # 构造Prompt
+        prompt = (
+            "你是一名专业的包装工程师。请根据以下信息推荐最优包装方案：\n\n"
+            f"【零件信息】:\n零件号: {item['零件号']}\n"
+            f"尺寸: {item['长度(mm)']}mm × {item['宽度(mm)']}mm × {item['高度(mm)']}mm\n"
+            f"重量: {item['重量(kg)']}kg\n"
+            f"数量: {qty}个\n\n"
+            "【可选箱型】:\n"
+        )
+        
+        for i, box in enumerate(valid_boxes, 1):
+            prompt += (
+                f"{i}. {box.get('箱型', '未知箱型')}: "
+                f"尺寸: {box.get('内部长度(mm)', '?')}×{box.get('内部宽度(mm)', '?')}×{box.get('内部高度(mm)', '?')}mm, "
+                f"承重: {box.get('最大承重(kg)', '?')}kg\n"
+                f"   每箱可装: {box.get('每箱可装', '?')}个, "
+                f"需要箱数: {box.get('需要箱数', '?')}\n"
+            )
+        
+        prompt += "\n【历史包装记录】:\n"
+        if isinstance(history, list) and history:
+            for record in history[:3]:  # 最多显示3条记录
+                prompt += (
+                    f"- 日期: {record.get('日期', '未知')}, "
+                    f"箱型: {record.get('箱型', '未知')}, "
+                    f"每箱数量: {record.get('每箱数量', '未知')}\n"
+                )
+        else:
+            prompt += "无相关历史记录\n"
+        
+        prompt += (
+            "\n请按以下格式输出推荐方案：\n"
+            "推荐箱型：xxx\n"
+            "推荐理由：xxx\n"
+            "装箱方案：每箱装xx个，共需xx箱\n"
+            "注意事项：xxx"
+        )
+        
+        print(f"构造的Prompt:\n{prompt[:500]}...")  # 只打印前500字符
+
+        # 调用OpenAI
+        print("调用OpenAI API...")
+        try:
+            res = client.chat.completions.create(
+                model=os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
+                messages=[
+                    {"role": "system", "content": "你是专业的包装方案助手，请用简洁清晰的中文回答"},
+                    {"role": "user", "content": prompt}
+                ],
+                stream=False
+            )
+            reply = res.choices[0].message.content.strip()
+            print(f"OpenAI响应: {reply[:200]}...")  # 只打印前200字符
+        except Exception as e:
+            print(f"⚠️ OpenAI调用失败: {e}")
+            reply = f"⚠️ 生成推荐时出错: {str(e)}"
+        
+        print("返回响应给客户端")
+        return jsonify({"response": reply})
+    
+    except Exception as e:
+        print(f"❌ 严重错误: {e}")
+        traceback.print_exc()
+        return jsonify({"response": f"❌ 服务器内部错误: {str(e)}"})
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    print("启动主服务器 (端口 5000)")
+    app.run(debug=True, port=5000, use_reloader=False)
