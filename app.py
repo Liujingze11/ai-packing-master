@@ -1,50 +1,52 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
 import pandas as pd
 import math
-
 from openai import OpenAI
-
 from dotenv import load_dotenv
 import os
 
 
-# 初始化 Flask 和 CORS
+# 🚀 初始化 Flask 应用
 app = Flask(__name__)
-CORS(app)
-load_dotenv()  # 从 .env 文件加载环境变量
+CORS(app) # 允许跨域请求（前后端分离场景下需要）
 
-# 读取数据
-item_df = pd.read_csv("零件尺寸表.csv")           # 包含：零件号、长度(mm)、宽度(mm)、高度(mm)、重量(kg)、材料
-box_df = pd.read_csv("包装箱类型.csv")           # 包含：箱型、内部长度(mm)、内部宽度(mm)、内部高度(mm)、最大承重(kg)
-history_df = pd.read_csv("历史包装方案.csv")     # 包含：方案ID,零件号,数量,使用箱型,备注
+# 📦 从.env文件加载环境变量（用于获取 API 密钥等）
+load_dotenv() 
 
-# 初始化 AI 客户端
+# 加载基础数据表
+item_df = pd.read_csv("零件尺寸表.csv")           # 零件数据：零件号、长度(mm)、宽度(mm)、高度(mm)、重量(kg)、材料
+box_df = pd.read_csv("包装箱类型.csv")           # 箱型数据：箱型、内部长度(mm)、内部宽度(mm)、内部高度(mm)、最大承重(kg)
+history_df = pd.read_csv("历史包装方案.csv")     # 历史方案：方案ID,零件号,数量,使用箱型,备注
+
+# 初始化 OpenAI 客户端（用于调用 AI 推荐）
 client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("OPENAI_API_BASE")
+    api_key=os.getenv("OPENAI_API_KEY"),    # 从环境变量读取 API 密钥
+    base_url=os.getenv("OPENAI_API_BASE")   # 可自定义为 DeepSeek 等 LLM 提供商地址
 )
 
-# 🧮 计算最大每箱可装数量（体积+重量限制）
+# 🧮 计算每种箱型最大可容纳的该零件数量（体积 + 重量限制）
 def calculate_max_capacity(item, box):
      # //取整；math.floor向下取整
     fit_l = box["内部长度(mm)"] // item["长度(mm)"]
     fit_w = box["内部宽度(mm)"] // item["宽度(mm)"] 
     fit_h = box["内部高度(mm)"] // item["高度(mm)"]
-    max_by_volume = fit_l * fit_w * fit_h
-    max_by_weight = math.floor(box["最大承重(kg)"] / item["重量(kg)"])
-    return min(max_by_volume, max_by_weight)
+    max_by_volume = fit_l * fit_w * fit_h  # 按体积可装的数量
+    max_by_weight = math.floor(box["最大承重(kg)"] / item["重量(kg)"])  # 按重量限制
+    return min(max_by_volume, max_by_weight)  # 返回最小值，即实际受限装箱数
 
 
-# 🧠 包装推荐逻辑（含装箱方案）
+# 🧠 核心推荐逻辑，结合历史数据与 AI 模型给出装箱建议
 def recommend_with_ai(item_id: str, quantity: int):
+    
+    # 🔍 查询对应零件信息
     result = item_df[item_df["零件号"] == item_id] # 从 item_df 数据框中筛选出零件号为 item_id 的那一行。
-
     if result.empty:
         return "❌ 未找到该零件号对应的数据。"
 
     item = result.iloc[0] # 获取该零件的第一行数据（只有一行的话就是它自己），类型为 pd.Series。
+
+    # 🧾 构建零件信息结构，便于 Prompt 输入
     item_info = {
         "零件号": item["零件号"],
         "数量": quantity,
@@ -55,18 +57,31 @@ def recommend_with_ai(item_id: str, quantity: int):
         "材料": item.get("材料", "未知")
     }
 
-    # 过滤符合体积和重量要求的箱型
+    # 过滤符合体积和重量要求的箱型（加20%安全冗余）
     def is_suitable(row):
-        box_vol = row["内部长度(mm)"] * row["内部宽度(mm)"] * row["内部高度(mm)"]
-        item_vol = item["长度(mm)"] * item["宽度(mm)"] * item["高度(mm)"] * quantity
-        total_weight = item["重量(kg)"] * quantity
-        return item_vol <= box_vol * 100 and total_weight <= row["最大承重(kg)"] * 100  # 给些余量
+        item_volume = item["长度(mm)"] * item["宽度(mm)"] * item["高度(mm)"]
+        box_volume = row["内部长度(mm)"] * row["内部宽度(mm)"] * row["内部高度(mm)"]
+
+        total_item_volume = item_volume * quantity
+        total_item_weight = item["重量(kg)"] * quantity
+
+        # 容量与承重都预留20%安全冗余
+        effective_box_volume = box_volume * 0.8
+        effective_box_weight = row["最大承重(kg)"] * 0.8
+
+        return total_item_volume <= effective_box_volume and total_item_weight <= effective_box_weight
+
+    # 对 box_df 表中的每一行（即每个箱型）应用 is_suitable(row) 判断函数，筛选出“适合的箱型”
+    # apply(..., axis=1) 会把每一行作为一个 Series 传入 is_suitable() 中
+    # 结果是一个布尔数组（True/False），用于 DataFrame 过滤
+    # 最终得到的 suitable_boxes_df 是一个 DataFrame，包含所有满足条件的箱型
 
     suitable_boxes_df = box_df[box_df.apply(is_suitable, axis=1)]
+    # 检查是否为空（即没有任何箱型满足要求）
     if suitable_boxes_df.empty:
         return "❌ 当前无可用箱型满足该零件体积与重量需求。"
 
-    # 添加每箱可装数量
+    # 计算每种箱型最多可装数量和需要箱数
     suitable_boxes = []
     for _, box in suitable_boxes_df.iterrows():
         cap = calculate_max_capacity(item, box)
@@ -78,11 +93,11 @@ def recommend_with_ai(item_id: str, quantity: int):
             "需要箱数": math.ceil(quantity / cap) if cap > 0 else "不适用"
         })
 
-    # 获取历史记录
+    # 提取历史装箱记录（用于增强推荐准确性）
     history = history_df[history_df["零件号"] == item_id]
     history_data = history.to_dict(orient="records") if not history.empty else "无历史包装记录"
 
-    # 构造 Prompt
+    # 构造 Prompt 输入，交给 LLM 推荐
     prompt = (
         "你是一个经验丰富的工业包装工程师。\n"
         "以下是一个零件的信息、若干个符合要求的箱型、以及该零件的历史包装方案。\n"
@@ -98,6 +113,7 @@ def recommend_with_ai(item_id: str, quantity: int):
         "推荐箱型：xxx\n推荐理由：xxx\n装箱方案：\n- 每箱可装：xx\n- 总共需要：xx\n- 装箱策略建议：xxx"
     )
 
+    # 发送到 AI 模型生成推荐内容
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
@@ -108,7 +124,7 @@ def recommend_with_ai(item_id: str, quantity: int):
             stream=False
         )
 
-        # 🛡️ 容错处理：尝试提取内容
+        # 🛡️ 提取 LLM 响应内容
         if hasattr(response, "choices") and len(response.choices) > 0:
             message = response.choices[0].message
             if hasattr(message, "content"):
@@ -124,13 +140,14 @@ def recommend_with_ai(item_id: str, quantity: int):
         return f"⚠️ AI 调用失败：{str(e)}"
 
 
-# 🌐 API 接口
+# 🌐 创建 API 接口：POST 请求，接收用户输入并返回推荐
 @app.route("/recommend", methods=["POST"])
 def recommend_api():
     data = request.json
     user_input = data.get("message", "").strip()
     tokens = user_input.split()
 
+    # ⚠️ 输入检查：必须为“零件号 数量”
     if len(tokens) != 2:
         return jsonify({"response": "⚠️ 输入格式错误，应为：零件号 数量，例如 A001 10"})
 
@@ -143,6 +160,6 @@ def recommend_api():
     reply = recommend_with_ai(item_id, quantity)
     return jsonify({"response": reply})
 
-# ✅ 启动服务
+# ✅ 启动 Flask 服务（本地调试用）
 if __name__ == "__main__":
     app.run(debug=True)
