@@ -1,51 +1,12 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-  <meta charset="UTF-8">
-  <title>智能包装推荐助手</title>
-  <style>
-    body { font-family: sans-serif; margin: 40px; background: #f4f4f4; }
-    #chat { background: white; padding: 20px; border-radius: 10px; max-width: 600px; margin: auto; }
-    .message { margin-bottom: 12px; }
-    .user { color: blue; }
-    .assistant { color: green; }
-  </style>
-</head>
-<body>
-  <div id="chat">
-    <h2>🔧 智能包装推荐助手</h2>
-    <div id="history"></div>
-    <input type="text" id="input" placeholder="例如：A001 10" style="width:80%;">
-    <button onclick="sendMessage()">发送</button>
-  </div>
-
-  <script>
-    // 系统自我介绍
-    window.onload = () => {
-      const historyDiv = document.getElementById("history");
-      historyDiv.innerHTML += `<div class="message assistant">🤖 助手：你好呀，我是刚出生的智能包装推荐助手宝宝👶，目前正在努力学习说话。如果你输入“零件编号 数量”，我会尝试为你推荐合适的包装方案哦～</div>`;
-    };
-
-    async function sendMessage() {
-      const input = document.getElementById("input");
-      const message = input.value;
-      if (!message) return;
-
-      const historyDiv = document.getElementById("history");
-      historyDiv.innerHTML += `<div class="message user">👤 用户：${message}</div>`;
-
-      const res = await fetch("http://127.0.0.1:5000/recommend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message })
-      });
-
-      const data = await res.json();
-      const formatted = data.response.replace(/\n/g, "<br>");
-      historyDiv.innerHTML += `<div class="message assistant">🤖 助手：${formatted}</div>`;
-      input.value = "";
-    }
-
-  </script>
-</body>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 装箱引擎</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

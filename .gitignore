@@ -1,4 +1,9 @@
-__pycache__/
+node_modules/
+dist/
+dist-electron/
+*.log
 .env
-*.pyc
-*.csv
+.env.*
+!.env.example
+.DS_Store
+*.local
