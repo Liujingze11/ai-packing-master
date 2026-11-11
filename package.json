@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "AI 装箱推荐桌面演示（SmartPackingEngine Desktop Demo）",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "npm run build && electron .",
     "build": "tsc -p tsconfig.electron.json && vite build",

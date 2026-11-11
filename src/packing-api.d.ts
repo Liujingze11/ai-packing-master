@@ -1,9 +1,18 @@
 /**
  * window.packingAPI 类型声明。
- * Task 1 为 stub 形态；Task 4/5 实现时收紧为精确签名（见台账 ruling）。
+ * recommend 已收紧（Task 4）；getSettings/setSettings/importCsv 在 Task 5/6 收紧。
  */
+import type { BoxType, HistoryRecord, Item } from './lib/types';
+
+export interface RecommendPayload {
+  item: Item;
+  quantity: number;
+  candidates: { box: BoxType; maxPerBox: number }[];
+  history: HistoryRecord[];
+}
+
 export interface PackingAPIStub {
-  recommend(payload: unknown): Promise<string>;
+  recommend(payload: RecommendPayload): Promise<string>;
   getSettings(): Promise<unknown>;
   setSettings(settings: unknown): Promise<void>;
   importCsv(): Promise<unknown>;

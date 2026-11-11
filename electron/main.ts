@@ -1,5 +1,6 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
+import { recommendHandler, type RecommendPayload } from './llm-client';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -12,8 +13,12 @@ function createWindow(): void {
       nodeIntegration: false,
     },
   });
-  void win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  void win.loadFile(path.join(__dirname, '..', '..', 'dist', 'index.html'));
 }
+
+ipcMain.handle('llm:recommend', (_event, payload: RecommendPayload) =>
+  recommendHandler(payload),
+);
 
 void app.whenReady().then(() => {
   createWindow();

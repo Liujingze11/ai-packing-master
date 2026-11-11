@@ -1,4 +1,5 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
+import type { RecommendPayload } from './llm-client';
 
 const notImplemented =
   (name: string) =>
@@ -6,7 +7,8 @@ const notImplemented =
     Promise.reject(new Error(`${name} 尚未实现`));
 
 contextBridge.exposeInMainWorld('packingAPI', {
-  recommend: notImplemented('recommend'),
+  recommend: (payload: RecommendPayload): Promise<string> =>
+    ipcRenderer.invoke('llm:recommend', payload),
   getSettings: notImplemented('getSettings'),
   setSettings: notImplemented('setSettings'),
   importCsv: notImplemented('importCsv'),
