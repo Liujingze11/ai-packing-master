@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
-import { recommendHandler, type RecommendPayload } from './llm-client';
+import { recommendHandler, setLlmConfigProvider, type RecommendPayload } from './llm-client';
+import { loadSettings, mergeSettings, saveSettings, type Settings } from './settings';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -19,6 +20,17 @@ function createWindow(): void {
 ipcMain.handle('llm:recommend', (_event, payload: RecommendPayload) =>
   recommendHandler(payload),
 );
+
+ipcMain.handle('settings:get', () => loadSettings(app.getPath('userData')));
+
+ipcMain.handle('settings:set', (_event, s: Settings) => {
+  saveSettings(app.getPath('userData'), mergeSettings(s));
+});
+
+setLlmConfigProvider(() => {
+  const s = loadSettings(app.getPath('userData'));
+  return { apiKey: s.apiKey, baseUrl: s.baseUrl, model: s.model };
+});
 
 void app.whenReady().then(() => {
   createWindow();

@@ -1,8 +1,8 @@
 /**
  * window.packingAPI 类型声明。
- * recommend 已收紧（Task 4）；getSettings/setSettings/importCsv 在 Task 5/6 收紧。
+ * recommend（Task 4）、getSettings/setSettings（Task 5）已收紧；importCsv 在 Task 6 收紧。
  */
-import type { BoxType, HistoryRecord, Item } from './lib/types';
+import type { BoxType, HistoryRecord, Item, Settings } from './lib/types';
 
 export interface RecommendPayload {
   item: Item;
@@ -13,8 +13,8 @@ export interface RecommendPayload {
 
 export interface PackingAPIStub {
   recommend(payload: RecommendPayload): Promise<string>;
-  getSettings(): Promise<unknown>;
-  setSettings(settings: unknown): Promise<void>;
+  getSettings(): Promise<Settings>;
+  setSettings(settings: Settings): Promise<void>;
   importCsv(): Promise<unknown>;
 }
 

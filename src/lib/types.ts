@@ -24,3 +24,20 @@ export interface HistoryRecord {
   boxId: string;
   note: string;
 }
+
+/** 应用设置（渲染层与主进程共享的纯类型/常量，勿在此引入 node 模块） */
+export interface Settings {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  margin: number;
+  mockMode: boolean;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  apiKey: '',
+  baseUrl: 'https://api.deepseek.com',
+  model: 'deepseek-chat',
+  margin: 0.8,
+  mockMode: true,
+};
