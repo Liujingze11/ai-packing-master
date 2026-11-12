@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { validateBox } from '../lib/catalog';
 import type { BoxSpec } from '../lib/types';
+import BoxPicker from './BoxPicker';
 
 interface Props {
   boxes: BoxSpec[];
@@ -45,21 +46,7 @@ export default function BoxManager({ boxes, selectedId, onSelect, onCreate }: Pr
   return (
     <section className="box-manager">
       <h2>📦 箱子</h2>
-      {boxes.length === 0 && <p className="cart-empty">还没有箱子——新建一个，或载入示例数据</p>}
-      <div className="box-list">
-        {boxes.map((b) => (
-          <button
-            key={b.id}
-            className={`box-card${selectedId === b.id ? ' selected' : ''}`}
-            onClick={() => onSelect(b.id)}
-          >
-            <strong>{b.name}</strong>
-            <span>
-              {b.innerLength}×{b.innerWidth}×{b.innerHeight} mm · ≤{b.maxLoad} kg
-            </span>
-          </button>
-        ))}
-      </div>
+      <BoxPicker boxes={boxes} selectedId={selectedId} onSelect={onSelect} />
 
       {formOpen ? (
         <div className="box-form">

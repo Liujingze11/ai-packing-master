@@ -14,8 +14,8 @@ import type { Catalog } from '../src/lib/types';
 
 function createWindow(): void {
   const win = new BrowserWindow({
-    width: 1100,
-    height: 750,
+    width: 1440,
+    height: 900,
     title: 'AI 装箱引擎',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -24,6 +24,13 @@ function createWindow(): void {
     },
   });
   void win.loadFile(path.join(__dirname, '..', '..', 'dist', 'index.html'));
+  win.center();
+  win.once('ready-to-show', () => {
+    win.show();
+    win.focus();
+    win.setAlwaysOnTop(true, 'screen-saver');
+    setTimeout(() => win.setAlwaysOnTop(false), 5000);
+  });
 }
 
 ipcMain.handle('llm:recommend', (_event, payload: RecommendPayload) =>

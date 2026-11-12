@@ -3,12 +3,14 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { MixedLayout } from '../lib/packing-mixed';
+import type { BoxSpec } from '../lib/types';
 
 interface Props {
-  layout: MixedLayout;
-  totalBoxes: number;
-  skuCount: number;
-  skuNames: string[];
+  box: BoxSpec | null;
+  layout: MixedLayout | null;
+  totalBoxes?: number;
+  skuCount?: number;
+  skuNames?: string[];
 }
 
 /** SKU 配色：accent 紫系邻近色 */
@@ -24,7 +26,6 @@ interface AnimItem {
   delayIndex: number;
 }
 
-/** 单 SKU 颜色组：instancedMesh 分批飞入 */
 function ColorGroup({ color, items }: { color: string; items: AnimItem[] }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const start = useRef<number | null>(null);
@@ -81,8 +82,8 @@ function AnimatedItems({ layout }: { layout: MixedLayout }) {
   );
 }
 
-function Crate({ layout }: { layout: MixedLayout }) {
-  const [w, h, d] = layout.boxSize;
+function Crate({ boxSize }: { boxSize: [number, number, number] }) {
+  const [w, h, d] = boxSize;
   return (
     <group position={[0, h / 2, 0]}>
       <mesh>
@@ -97,34 +98,60 @@ function Crate({ layout }: { layout: MixedLayout }) {
   );
 }
 
-export default function PackingScene({ layout, totalBoxes, skuCount, skuNames }: Props) {
+export default function PackingScene({ box, layout, totalBoxes, skuCount, skuNames }: Props) {
   const [replay, setReplay] = useState(0);
-  const [w, h, d] = layout.boxSize;
+
+  const boxSize: [number, number, number] | null = layout
+    ? layout.boxSize
+    : box
+      ? [box.innerLength, box.innerHeight, box.innerWidth]
+      : null;
+
+  if (!boxSize) {
+    return (
+      <div className="scene-placeholder">
+        <p className="placeholder">点右上「＋」选择箱子，选中后这里预览空箱</p>
+      </div>
+    );
+  }
+
+  const [w, h, d] = boxSize;
 
   return (
     <div className="scene-canvas">
-      <div className="scene-badge">
-        共需 <strong>{totalBoxes}</strong> 箱 · 混装 <strong>{skuCount}</strong> 种 · 本箱{' '}
-        <strong>{layout.items.length}</strong> 件
-      </div>
-      <button className="scene-replay" onClick={() => setReplay((r) => r + 1)}>
-        ↻ 重播
-      </button>
-      <div className="scene-legend">
-        {skuNames.map((name, i) => (
-          <span key={i} className="legend-chip">
-            <i style={{ background: SKU_COLORS[i % SKU_COLORS.length] }} />
-            {name}
-          </span>
-        ))}
-      </div>
+      {layout && totalBoxes !== undefined && skuCount !== undefined && (
+        <div className="scene-badge">
+          共需 <strong>{totalBoxes}</strong> 箱 · 混装 <strong>{skuCount}</strong> 种 · 本箱{' '}
+          <strong>{layout.items.length}</strong> 件
+        </div>
+      )}
+      {!layout && box && (
+        <div className="scene-badge">
+          空箱预览：<strong>{box.name}</strong>（{box.innerLength}×{box.innerWidth}×{box.innerHeight} mm）
+        </div>
+      )}
+      {layout && (
+        <button className="scene-replay" onClick={() => setReplay((r) => r + 1)}>
+          ↻ 重播
+        </button>
+      )}
+      {layout && skuNames && skuNames.length > 0 && (
+        <div className="scene-legend">
+          {skuNames.map((name, i) => (
+            <span key={i} className="legend-chip">
+              <i style={{ background: SKU_COLORS[i % SKU_COLORS.length] }} />
+              {name}
+            </span>
+          ))}
+        </div>
+      )}
       <Canvas camera={{ position: [w * 1.1, h * 1.6, d * 1.4], fov: 45 }} dpr={[1, 2]}>
         <color attach="background" args={['#eef2f8']} />
         <ambientLight intensity={0.65} />
         <directionalLight position={[w * 1.2, h * 2.4, d * 1.1]} intensity={0.95} />
         <directionalLight position={[-w, h * 1.2, -d]} intensity={0.35} />
-        <Crate layout={layout} />
-        <AnimatedItems key={replay} layout={layout} />
+        <Crate boxSize={boxSize} />
+        {layout && <AnimatedItems key={replay} layout={layout} />}
         <OrbitControls makeDefault target={[0, h / 2, 0]} minDistance={w * 0.5} maxDistance={w * 5} />
         <gridHelper args={[Math.max(w, d) * 3, 12, '#cbd5e1', '#e2e8f0']} position={[0, -0.5, 0]} />
       </Canvas>

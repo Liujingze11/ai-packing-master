@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import BoxManager from './components/BoxManager';
+import BoxPicker from './components/BoxPicker';
 import CartPanel from './components/CartPanel';
 import ChatArea, { type ChatMessage } from './components/ChatArea';
 import PartForm from './components/PartForm';
@@ -54,6 +55,7 @@ export default function App() {
     skuNames: string[];
   } | null>(null);
   const [runId, setRunId] = useState(0);
+  const [boxPickerOpen, setBoxPickerOpen] = useState(false);
 
   useEffect(() => {
     void window.packingAPI.getCatalog().then((c) => {
@@ -89,6 +91,14 @@ export default function App() {
     .filter((l): l is { part: Part; quantity: number } => Boolean(l.part));
 
   const canSend = cartLines.length > 0;
+  const selectedBox = catalog.boxes.find((b) => b.id === selectedBoxId) ?? null;
+
+  const pickBox = (id: string) => {
+    setSelectedBoxId(id);
+    setMixedLayout(null);
+    setSceneMeta(null);
+    setBoxPickerOpen(false);
+  };
 
   const send = async (userMessage: string) => {
     setBusy(true);
@@ -142,7 +152,10 @@ export default function App() {
   return (
     <main className="app">
       <header className="app-header">
-        <h1>📦 AI 装箱引擎</h1>
+        <h1>
+          📦 AI 装箱引擎
+          <span className="tagline">混装演示 · 外卖式点单</span>
+        </h1>
         <button className="gear" onClick={() => setSettingsOpen(true)} title="设置">
           ⚙️ 设置
         </button>
@@ -163,19 +176,27 @@ export default function App() {
 
         <section className="center-col">
           <div className="scene-wrap">
-            {mixedLayout && sceneMeta ? (
-              <PackingScene
-                key={runId}
-                layout={mixedLayout}
-                totalBoxes={sceneMeta.totalBoxes}
-                skuCount={sceneMeta.skuCount}
-                skuNames={sceneMeta.skuNames}
-              />
-            ) : (
-              <div className="scene-placeholder">
-                <p className="placeholder">3D 装箱模拟将在这里播放</p>
+            <button
+              className="scene-addbox"
+              title="选择箱子"
+              onClick={() => setBoxPickerOpen((o) => !o)}
+            >
+              ＋
+            </button>
+            {boxPickerOpen && (
+              <div className="box-popover">
+                <p className="box-popover-title">选择箱子</p>
+                <BoxPicker boxes={catalog.boxes} selectedId={selectedBoxId} onSelect={pickBox} />
               </div>
             )}
+            <PackingScene
+              key={`${runId}-${selectedBoxId ?? 'none'}`}
+              box={selectedBox}
+              layout={mixedLayout}
+              totalBoxes={sceneMeta?.totalBoxes}
+              skuCount={sceneMeta?.skuCount}
+              skuNames={sceneMeta?.skuNames}
+            />
           </div>
           <ChatArea messages={messages} canSend={canSend} busy={busy} onSend={(m) => void send(m)} />
         </section>
@@ -184,7 +205,7 @@ export default function App() {
           <BoxManager
             boxes={catalog.boxes}
             selectedId={selectedBoxId}
-            onSelect={setSelectedBoxId}
+            onSelect={pickBox}
             onCreate={(b) => persist(upsertBox(catalog, b))}
           />
         </aside>
