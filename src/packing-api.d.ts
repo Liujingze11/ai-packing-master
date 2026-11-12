@@ -1,8 +1,7 @@
 /**
- * window.packingAPI 类型声明。
- * recommend（Task 4）、getSettings/setSettings（Task 5）已收紧；importCsv 在 Task 6 收紧。
+ * window.packingAPI 类型声明（Task 4/5/6 已全部收紧）。
  */
-import type { BoxType, HistoryRecord, Item, Settings } from './lib/types';
+import type { BoxType, Dataset, HistoryRecord, Item, Settings } from './lib/types';
 
 export interface RecommendPayload {
   item: Item;
@@ -15,7 +14,7 @@ export interface PackingAPIStub {
   recommend(payload: RecommendPayload): Promise<string>;
   getSettings(): Promise<Settings>;
   setSettings(settings: Settings): Promise<void>;
-  importCsv(): Promise<unknown>;
+  importCsv(): Promise<Dataset | null>;
 }
 
 declare global {

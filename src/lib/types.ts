@@ -25,6 +25,13 @@ export interface HistoryRecord {
   note: string;
 }
 
+/** 一套数据：零件表 + 箱型表 + 历史方案 */
+export interface Dataset {
+  items: Item[];
+  boxes: BoxType[];
+  history: HistoryRecord[];
+}
+
 /** 应用设置（渲染层与主进程共享的纯类型/常量，勿在此引入 node 模块） */
 export interface Settings {
   apiKey: string;
