@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
+import BoxManager from './components/BoxManager';
 import CartPanel from './components/CartPanel';
+import ChatArea, { type ChatMessage } from './components/ChatArea';
 import PartForm from './components/PartForm';
 import PartsMenu from './components/PartsMenu';
 import SettingsPanel from './components/SettingsPanel';
 import boxesRaw from './data/boxes.csv?raw';
 import itemsRaw from './data/items.csv?raw';
+import { adjustLine } from './lib/cart';
 import { upsertBox, upsertPart } from './lib/catalog';
 import { parseBoxes, parseItems } from './lib/csv';
-import { adjustLine } from './lib/cart';
+import { runMixedRecommendation } from './lib/mixed-flow';
+import type { MixedLayout, MixedOrderLine } from './lib/packing-mixed';
 import type { BoxType, Catalog, CartLine, Item, Part } from './lib/types';
 
 function toPart(it: Item): Part {
@@ -38,9 +42,17 @@ export default function App() {
   const [partFormOpen, setPartFormOpen] = useState(false);
   const [catalog, setCatalog] = useState<Catalog>({ parts: [], boxes: [] });
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [mixedLayout, setMixedLayout] = useState<MixedLayout | null>(null);
+  const [sceneMeta, setSceneMeta] = useState<{ totalBoxes: number; skuCount: number; itemCount: number } | null>(null);
 
   useEffect(() => {
-    void window.packingAPI.getCatalog().then(setCatalog);
+    void window.packingAPI.getCatalog().then((c) => {
+      setCatalog(c);
+      if (c.boxes.length > 0) setSelectedBoxId(c.boxes[0].id);
+    });
   }, []);
 
   const persist = (c: Catalog) => {
@@ -53,6 +65,7 @@ export default function App() {
     for (const it of parseItems(itemsRaw)) c = upsertPart(c, toPart(it));
     for (const b of parseBoxes(boxesRaw)) c = upsertBox(c, toBoxSpec(b));
     persist(c);
+    if (!selectedBoxId && c.boxes.length > 0) setSelectedBoxId(c.boxes[0].id);
   };
 
   const importCsv = async () => {
@@ -67,6 +80,55 @@ export default function App() {
   const cartLines = cart
     .map((l) => ({ part: catalog.parts.find((p) => p.id === l.partId), quantity: l.quantity }))
     .filter((l): l is { part: Part; quantity: number } => Boolean(l.part));
+
+  const canSend = cartLines.length > 0;
+
+  const send = async (userMessage: string) => {
+    setBusy(true);
+    const order: MixedOrderLine[] = cartLines.map((l) => ({ part: l.part, quantity: l.quantity }));
+    setMessages((m) => [...m, { role: 'user', text: userMessage || '开始装箱' }]);
+    try {
+      const settings = await window.packingAPI.getSettings();
+      const box = catalog.boxes.find((b) => b.id === selectedBoxId) ?? null;
+      const out = await runMixedRecommendation(
+        {
+          order,
+          box,
+          boxes: catalog.boxes,
+          margin: settings.margin,
+          userMessage,
+          mockMode: settings.mockMode,
+        },
+        window.packingAPI,
+      );
+      if (out.ok) {
+        const { totalBoxes, firstBox, reply, boxName } = out.result;
+        const placedText = firstBox.placed.map((p) => `${p.name}×${p.count}`).join('，');
+        setMessages((m) => [
+          ...m,
+          {
+            role: 'ai',
+            text: `【推荐理由】${reply.reason}\n【策略建议】${reply.strategy}\n【装箱数字】箱型「${boxName}」第一箱装入 ${placedText}；共 ${totalBoxes} 箱。`,
+          },
+        ]);
+        setMixedLayout(firstBox.layout);
+        setSceneMeta({
+          totalBoxes,
+          skuCount: firstBox.placed.length,
+          itemCount: firstBox.layout.items.length,
+        });
+      } else {
+        setMessages((m) => [...m, { role: 'ai', text: `⚠️ ${out.message}` }]);
+      }
+    } catch (e) {
+      setMessages((m) => [
+        ...m,
+        { role: 'ai', text: `⚠️ ${e instanceof Error ? e.message : String(e)}` },
+      ]);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <main className="app">
@@ -87,15 +149,35 @@ export default function App() {
             <button onClick={() => void importCsv()}>📂 导入 CSV</button>
           </div>
           <h2>🧺 订单</h2>
-          <CartPanel
-            lines={cartLines}
-            onAdjust={(id, d) => setCart((c) => adjustLine(c, id, d))}
-          />
+          <CartPanel lines={cartLines} onAdjust={(id, d) => setCart((c) => adjustLine(c, id, d))} />
         </aside>
 
-        <section className="output">
-          <p className="placeholder">v2 交互建设中：箱子管理与 AI 对话区即将上线。</p>
+        <section className="center-col">
+          <div className="scene-wrap">
+            {mixedLayout && sceneMeta ? (
+              <div className="scene-placeholder">
+                <p>
+                  共需 <strong>{sceneMeta.totalBoxes}</strong> 箱 · 混装{' '}
+                  <strong>{sceneMeta.skuCount}</strong> 种 · 本箱 <strong>{sceneMeta.itemCount}</strong>{' '}
+                  件
+                </p>
+                <p className="card-sub">3D 混装场景（下一任务接入）</p>
+              </div>
+            ) : (
+              <p className="placeholder">3D 装箱模拟将在这里播放</p>
+            )}
+          </div>
+          <ChatArea messages={messages} canSend={canSend} busy={busy} onSend={(m) => void send(m)} />
         </section>
+
+        <aside className="right-col">
+          <BoxManager
+            boxes={catalog.boxes}
+            selectedId={selectedBoxId}
+            onSelect={setSelectedBoxId}
+            onCreate={(b) => persist(upsertBox(catalog, b))}
+          />
+        </aside>
       </div>
 
       <PartForm
