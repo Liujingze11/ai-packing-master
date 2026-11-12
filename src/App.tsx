@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import InputPanel from './components/InputPanel';
+import PackingScene from './components/PackingScene';
 import ResultCards from './components/ResultCards';
 import SettingsPanel from './components/SettingsPanel';
 import boxesRaw from './data/boxes.csv?raw';
@@ -19,6 +20,7 @@ export default function App() {
   const [result, setResult] = useState<FlowResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [runId, setRunId] = useState(0);
   const [lastArgs, setLastArgs] = useState<{ itemId: string; quantity: number } | null>(null);
 
   const run = async (itemId: string, quantity: number) => {
@@ -29,8 +31,10 @@ export default function App() {
     try {
       const settings = await window.packingAPI.getSettings();
       const out = await runRecommendation(dataset, itemId, quantity, settings, window.packingAPI);
-      if (out.ok) setResult(out.result);
-      else setError(out.error.message);
+      if (out.ok) {
+        setResult(out.result);
+        setRunId((r) => r + 1);
+      } else setError(out.error.message);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -67,7 +71,17 @@ export default function App() {
               )}
             </div>
           )}
-          {result && <ResultCards recommendation={result.recommendation} item={result.item} />}
+          {result && (
+            <>
+              <PackingScene
+                key={runId}
+                layout={result.layout}
+                perBoxCount={result.recommendation.perBoxCount}
+                totalBoxes={result.recommendation.totalBoxes}
+              />
+              <ResultCards recommendation={result.recommendation} item={result.item} />
+            </>
+          )}
           {!error && !result && !loading && (
             <p className="placeholder">输入零件号和数量，开始推荐装箱方案。</p>
           )}

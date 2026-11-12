@@ -6,8 +6,8 @@ import { loadSettings, mergeSettings, saveSettings, type Settings } from './sett
 
 function createWindow(): void {
   const win = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1100,
+    height: 750,
     title: 'AI 装箱引擎',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
