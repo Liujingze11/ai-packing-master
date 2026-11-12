@@ -57,6 +57,7 @@ export default function App() {
   } | null>(null);
   const [runId, setRunId] = useState(0);
   const [boxFormOpen, setBoxFormOpen] = useState(false);
+  const [focusAdd, setFocusAdd] = useState(false); // 选角色式：焦点停在「＋新建」槽位
 
   useEffect(() => {
     void window.packingAPI.getCatalog().then((c) => {
@@ -104,8 +105,14 @@ export default function App() {
   };
 
   const removeBoxById = (id: string) => {
-    persist(removeBox(catalog, id));
-    if (selectedBoxId === id) setSelectedBoxId(null);
+    const next = removeBox(catalog, id);
+    persist(next);
+    if (selectedBoxId === id) {
+      setSelectedBoxId(next.boxes[0]?.id ?? null);
+      setFocusAdd(next.boxes.length === 0);
+      setMixedLayout(null);
+      setSceneMeta(null);
+    }
   };
 
   const cartLines = cart
@@ -117,18 +124,31 @@ export default function App() {
 
   const pickBox = (id: string) => {
     setSelectedBoxId(id);
+    setFocusAdd(false);
     setMixedLayout(null);
     setSceneMeta(null);
   };
 
-  // 游戏选角色式切换：左右循环所有箱子
-  const boxIdx = Math.max(0, catalog.boxes.findIndex((b) => b.id === selectedBoxId));
-  const prevBox = catalog.boxes.length > 1 ? catalog.boxes[(boxIdx - 1 + catalog.boxes.length) % catalog.boxes.length] : null;
-  const nextBox = catalog.boxes.length > 1 ? catalog.boxes[(boxIdx + 1) % catalog.boxes.length] : null;
+  // 游戏选角色式切换：箱子循环 + 末尾「＋新建」槽位
+  const cycleItems = [
+    ...catalog.boxes.map((b) => ({ kind: 'box' as const, id: b.id, name: b.name })),
+    { kind: 'add' as const, id: 'ADD', name: '新建' },
+  ];
+  const focusIdx = focusAdd
+    ? cycleItems.length - 1
+    : Math.max(0, catalog.boxes.findIndex((b) => b.id === selectedBoxId));
+  const prevItem = cycleItems.length > 1 ? cycleItems[(focusIdx - 1 + cycleItems.length) % cycleItems.length] : null;
+  const nextItem = cycleItems.length > 1 ? cycleItems[(focusIdx + 1) % cycleItems.length] : null;
   const cycleBox = (dir: -1 | 1) => {
-    if (catalog.boxes.length === 0) return;
-    const i = Math.max(0, catalog.boxes.findIndex((b) => b.id === selectedBoxId));
-    pickBox(catalog.boxes[(i + dir + catalog.boxes.length) % catalog.boxes.length].id);
+    if (cycleItems.length === 0) return;
+    const t = cycleItems[(focusIdx + dir + cycleItems.length) % cycleItems.length];
+    if (t.kind === 'add') {
+      setFocusAdd(true);
+      setMixedLayout(null);
+      setSceneMeta(null);
+    } else {
+      pickBox(t.id);
+    }
   };
 
   const send = async (userMessage: string) => {
@@ -211,31 +231,44 @@ export default function App() {
 
         <section className="center-col">
           <div className="scene-wrap">
-            <PackingScene
-              key={`${runId}-${selectedBoxId ?? 'none'}`}
-              box={selectedBox}
-              layout={mixedLayout}
-              totalBoxes={sceneMeta?.totalBoxes}
-              skuCount={sceneMeta?.skuCount}
-              skuNames={sceneMeta?.skuNames}
-            />
-            <button
-              className={`scene-ghost-add${selectedBox ? '' : ' big'}`}
-              title="新建箱子"
-              onClick={() => setBoxFormOpen(true)}
-            >
-              ＋
-            </button>
-            {prevBox && nextBox && (
+            {focusAdd || !selectedBox ? (
+              <div className="scene-placeholder">
+                <p className="placeholder">
+                  {catalog.boxes.length === 0 ? '点「＋」创建箱子，创建后这里预览' : '点「＋」创建新箱子'}
+                </p>
+                <button className="scene-ghost-add big" title="新建箱子" onClick={() => setBoxFormOpen(true)}>
+                  ＋
+                </button>
+              </div>
+            ) : (
               <>
-                <button className="scene-ghost-arrow left" title="上一个箱子" onClick={() => cycleBox(-1)}>
+                <PackingScene
+                  key={`${runId}-${selectedBoxId ?? 'none'}`}
+                  box={selectedBox}
+                  layout={mixedLayout}
+                  totalBoxes={sceneMeta?.totalBoxes}
+                  skuCount={sceneMeta?.skuCount}
+                  skuNames={sceneMeta?.skuNames}
+                />
+                <button
+                  className="scene-ghost-add"
+                  title="新建箱子"
+                  onClick={() => setBoxFormOpen(true)}
+                >
+                  ＋
+                </button>
+              </>
+            )}
+            {prevItem && nextItem && (
+              <>
+                <button className="scene-ghost-arrow left" title="切换" onClick={() => cycleBox(-1)}>
                   ‹
                 </button>
-                <button className="scene-ghost-arrow right" title="下一个箱子" onClick={() => cycleBox(1)}>
+                <button className="scene-ghost-arrow right" title="切换" onClick={() => cycleBox(1)}>
                   ›
                 </button>
-                <span className="scene-switch-label left">{prevBox.name}</span>
-                <span className="scene-switch-label right">{nextBox.name}</span>
+                <span className="scene-switch-label left">{prevItem.name}</span>
+                <span className="scene-switch-label right">{nextItem.name}</span>
               </>
             )}
           </div>

@@ -373,8 +373,20 @@ button {
 
 .scene-placeholder {
   height: 100%;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.scene-placeholder .scene-ghost-add.big {
+  position: static;
+  transform: none;
+}
+
+.scene-placeholder .scene-ghost-add.big:hover {
+  transform: scale(1.05);
 }
 
 .placeholder {
