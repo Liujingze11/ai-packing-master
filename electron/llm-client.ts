@@ -1,5 +1,6 @@
-import { buildPrompt } from '../src/lib/llm';
+import { buildMixedPrompt, buildPrompt } from '../src/lib/llm';
 import type { CandidateBox } from '../src/lib/packing';
+import type { MixedOrderLine } from '../src/lib/packing-mixed';
 import type { HistoryRecord, Item } from '../src/lib/types';
 
 export interface LlmConfig {
@@ -58,5 +59,24 @@ export async function callLlm(config: LlmConfig, prompt: string): Promise<string
 
 export async function recommendHandler(payload: RecommendPayload): Promise<string> {
   const prompt = buildPrompt(payload.item, payload.quantity, payload.candidates, payload.history);
+  return callLlm(configProvider(), prompt);
+}
+
+export interface RecommendMixedPayload {
+  order: MixedOrderLine[];
+  boxName: string;
+  placed: { partId: string; name: string; count: number }[];
+  totalBoxes: number;
+  userMessage: string;
+}
+
+export async function recommendMixedHandler(payload: RecommendMixedPayload): Promise<string> {
+  const prompt = buildMixedPrompt(
+    payload.order,
+    payload.boxName,
+    payload.placed,
+    payload.totalBoxes,
+    payload.userMessage,
+  );
   return callLlm(configProvider(), prompt);
 }

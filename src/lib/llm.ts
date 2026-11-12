@@ -1,4 +1,5 @@
 import { totalBoxes, type CandidateBox } from './packing';
+import type { MixedOrderLine } from './packing-mixed';
 import type { BoxType, HistoryRecord, Item } from './types';
 
 export interface PackingRecommendation {
@@ -138,5 +139,57 @@ export function mockRecommendation(
     perBoxCount: chosen.maxPerBox,
     strategy: MOCK_STRATEGY,
     totalBoxes: totalBoxes(quantity, chosen.maxPerBox),
+  };
+}
+
+// ============ v2 混装订单语义（数字由算法产出，LLM 只出文案） ============
+
+export interface MixedReply {
+  reason: string;
+  strategy: string;
+}
+
+export function buildMixedPrompt(
+  order: MixedOrderLine[],
+  boxName: string,
+  placed: { partId: string; name: string; count: number }[],
+  totalBoxes: number,
+  userMessage: string,
+): string {
+  const lines = order
+    .filter((l) => l.quantity > 0)
+    .map(
+      (l) =>
+        `${l.part.name}（${l.part.length}×${l.part.width}×${l.part.height}mm，${l.part.weight}kg）× ${l.quantity}`,
+    );
+  const placedText = placed.map((p) => `${p.name} × ${p.count}`).join('，');
+  return [
+    '你是一个经验丰富的工业包装工程师。',
+    '以下是一张混装订单与已由算法算出的装箱数字，请给出推荐理由与装箱策略（隔板/缓冲/摆放建议等）。',
+    `【订单】：${lines.join('；')}`,
+    `【所选箱型】：${boxName}`,
+    `【装箱数字（算法已算出，不要改动）】：第一箱装入 ${placedText}；共 ${totalBoxes} 箱。`,
+    userMessage.trim() ? `【用户要求】：${userMessage.trim()}` : '',
+    '请只输出一个 JSON 对象（可省略代码围栏）：{"推荐理由": "...", "策略建议": "..."}',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+export function parseMixedReply(raw: string): MixedReply {
+  const json = extractJson(raw);
+  return {
+    reason: typeof json['推荐理由'] === 'string' ? (json['推荐理由'] as string) : '',
+    strategy: typeof json['策略建议'] === 'string' ? (json['策略建议'] as string) : '',
+  };
+}
+
+export function mockMixedReply(userMessage: string): MixedReply {
+  const msg = userMessage.trim();
+  return {
+    reason: '（演示模式）混装方案基于体积分层与承重预算，由算法精确计算。',
+    strategy: msg
+      ? `（演示模式）建议按分层顺序装箱并加入缓冲隔板。已考虑您的要求：${msg}`
+      : '（演示模式）建议按分层顺序装箱并加入缓冲隔板。',
   };
 }

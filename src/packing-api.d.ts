@@ -1,7 +1,7 @@
 /**
  * window.packingAPI 类型声明（Task 4/5/6 已全部收紧）。
  */
-import type { BoxType, Catalog, Dataset, HistoryRecord, Item, Settings } from './lib/types';
+import type { BoxType, Catalog, Dataset, HistoryRecord, Item, Part, Settings } from './lib/types';
 
 export interface RecommendPayload {
   item: Item;
@@ -10,8 +10,17 @@ export interface RecommendPayload {
   history: HistoryRecord[];
 }
 
+export interface RecommendMixedPayload {
+  order: { part: Part; quantity: number }[];
+  boxName: string;
+  placed: { partId: string; name: string; count: number }[];
+  totalBoxes: number;
+  userMessage: string;
+}
+
 export interface PackingAPIStub {
   recommend(payload: RecommendPayload): Promise<string>;
+  recommendMixed(payload: RecommendMixedPayload): Promise<string>;
   getSettings(): Promise<Settings>;
   setSettings(settings: Settings): Promise<void>;
   importCsv(): Promise<Dataset | null>;

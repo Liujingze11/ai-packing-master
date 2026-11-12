@@ -2,7 +2,13 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import { loadCatalog, saveCatalog } from './catalog-store';
 import { importCsvDialog } from './import-csv';
-import { recommendHandler, setLlmConfigProvider, type RecommendPayload } from './llm-client';
+import {
+  recommendHandler,
+  recommendMixedHandler,
+  setLlmConfigProvider,
+  type RecommendMixedPayload,
+  type RecommendPayload,
+} from './llm-client';
 import { loadSettings, mergeSettings, saveSettings, type Settings } from './settings';
 import type { Catalog } from '../src/lib/types';
 
@@ -22,6 +28,10 @@ function createWindow(): void {
 
 ipcMain.handle('llm:recommend', (_event, payload: RecommendPayload) =>
   recommendHandler(payload),
+);
+
+ipcMain.handle('llm:recommendMixed', (_event, payload: RecommendMixedPayload) =>
+  recommendMixedHandler(payload),
 );
 
 ipcMain.handle('settings:get', () => loadSettings(app.getPath('userData')));
