@@ -1,8 +1,10 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
+import { loadCatalog, saveCatalog } from './catalog-store';
 import { importCsvDialog } from './import-csv';
 import { recommendHandler, setLlmConfigProvider, type RecommendPayload } from './llm-client';
 import { loadSettings, mergeSettings, saveSettings, type Settings } from './settings';
+import type { Catalog } from '../src/lib/types';
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -29,6 +31,12 @@ ipcMain.handle('settings:set', (_event, s: Settings) => {
 });
 
 ipcMain.handle('import:csv', () => importCsvDialog());
+
+ipcMain.handle('catalog:get', () => loadCatalog(app.getPath('userData')));
+
+ipcMain.handle('catalog:save', (_event, c: Catalog) => {
+  saveCatalog(app.getPath('userData'), c);
+});
 
 setLlmConfigProvider(() => {
   const s = loadSettings(app.getPath('userData'));

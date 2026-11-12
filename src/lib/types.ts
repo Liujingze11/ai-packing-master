@@ -32,6 +32,36 @@ export interface Dataset {
   history: HistoryRecord[];
 }
 
+/** v2 目录：零件（可命名）与箱型 */
+export interface Part {
+  id: string;
+  name: string;
+  length: number;
+  width: number;
+  height: number;
+  weight: number;
+  material: string;
+}
+
+export interface BoxSpec {
+  id: string;
+  name: string;
+  innerLength: number;
+  innerWidth: number;
+  innerHeight: number;
+  maxLoad: number;
+}
+
+export interface Catalog {
+  parts: Part[];
+  boxes: BoxSpec[];
+}
+
+export interface CartLine {
+  partId: string;
+  quantity: number;
+}
+
 /** 应用设置（渲染层与主进程共享的纯类型/常量，勿在此引入 node 模块） */
 export interface Settings {
   apiKey: string;
