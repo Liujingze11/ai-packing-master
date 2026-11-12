@@ -803,3 +803,60 @@ button {
 .scene-ghost-add.big:hover {
   transform: translate(-50%, -50%) scale(1.05);
 }
+
+/* ============ 选角色式切换箭头（透明） ============ */
+.scene-ghost-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  width: 46px;
+  height: 46px;
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: rgba(47, 59, 82, 0.55);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.scene-ghost-arrow.left {
+  left: 16px;
+}
+
+.scene-ghost-arrow.right {
+  right: 16px;
+}
+
+.scene-ghost-arrow:hover {
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--accent);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.scene-switch-label {
+  position: absolute;
+  top: calc(50% + 54px);
+  transform: translateX(-50%);
+  z-index: 3;
+  font-size: 12px;
+  color: rgba(47, 59, 82, 0.45);
+  pointer-events: none;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-switch-label.left {
+  left: 39px;
+}
+
+.scene-switch-label.right {
+  right: 39px;
+  transform: translateX(50%);
+}

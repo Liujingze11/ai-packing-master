@@ -121,6 +121,16 @@ export default function App() {
     setSceneMeta(null);
   };
 
+  // 游戏选角色式切换：左右循环所有箱子
+  const boxIdx = Math.max(0, catalog.boxes.findIndex((b) => b.id === selectedBoxId));
+  const prevBox = catalog.boxes.length > 1 ? catalog.boxes[(boxIdx - 1 + catalog.boxes.length) % catalog.boxes.length] : null;
+  const nextBox = catalog.boxes.length > 1 ? catalog.boxes[(boxIdx + 1) % catalog.boxes.length] : null;
+  const cycleBox = (dir: -1 | 1) => {
+    if (catalog.boxes.length === 0) return;
+    const i = Math.max(0, catalog.boxes.findIndex((b) => b.id === selectedBoxId));
+    pickBox(catalog.boxes[(i + dir + catalog.boxes.length) % catalog.boxes.length].id);
+  };
+
   const send = async (userMessage: string) => {
     setBusy(true);
     const order: MixedOrderLine[] = cartLines.map((l) => ({ part: l.part, quantity: l.quantity }));
@@ -216,6 +226,18 @@ export default function App() {
             >
               ＋
             </button>
+            {prevBox && nextBox && (
+              <>
+                <button className="scene-ghost-arrow left" title="上一个箱子" onClick={() => cycleBox(-1)}>
+                  ‹
+                </button>
+                <button className="scene-ghost-arrow right" title="下一个箱子" onClick={() => cycleBox(1)}>
+                  ›
+                </button>
+                <span className="scene-switch-label left">{prevBox.name}</span>
+                <span className="scene-switch-label right">{nextBox.name}</span>
+              </>
+            )}
           </div>
           <ChatArea messages={messages} canSend={canSend} busy={busy} onSend={(m) => void send(m)} />
         </section>
