@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import BoxManager from './components/BoxManager';
-import BoxPicker from './components/BoxPicker';
+import BoxCarousel from './components/BoxCarousel';
+import BoxForm from './components/BoxForm';
 import CartPanel from './components/CartPanel';
 import ChatArea, { type ChatMessage } from './components/ChatArea';
 import PartForm from './components/PartForm';
@@ -56,7 +57,7 @@ export default function App() {
     skuNames: string[];
   } | null>(null);
   const [runId, setRunId] = useState(0);
-  const [boxPickerOpen, setBoxPickerOpen] = useState(false);
+  const [boxFormOpen, setBoxFormOpen] = useState(false);
 
   useEffect(() => {
     void window.packingAPI.getCatalog().then((c) => {
@@ -119,7 +120,6 @@ export default function App() {
     setSelectedBoxId(id);
     setMixedLayout(null);
     setSceneMeta(null);
-    setBoxPickerOpen(false);
   };
 
   const send = async (userMessage: string) => {
@@ -202,19 +202,6 @@ export default function App() {
 
         <section className="center-col">
           <div className="scene-wrap">
-            <button
-              className="scene-addbox"
-              title="选择箱子"
-              onClick={() => setBoxPickerOpen((o) => !o)}
-            >
-              ＋
-            </button>
-            {boxPickerOpen && (
-              <div className="box-popover">
-                <p className="box-popover-title">选择箱子</p>
-                <BoxPicker boxes={catalog.boxes} selectedId={selectedBoxId} onSelect={pickBox} />
-              </div>
-            )}
             <PackingScene
               key={`${runId}-${selectedBoxId ?? 'none'}`}
               box={selectedBox}
@@ -222,6 +209,12 @@ export default function App() {
               totalBoxes={sceneMeta?.totalBoxes}
               skuCount={sceneMeta?.skuCount}
               skuNames={sceneMeta?.skuNames}
+            />
+            <BoxCarousel
+              boxes={catalog.boxes}
+              selectedId={selectedBoxId}
+              onSelect={pickBox}
+              onAdd={() => setBoxFormOpen(true)}
             />
           </div>
           <ChatArea messages={messages} canSend={canSend} busy={busy} onSend={(m) => void send(m)} />
@@ -232,8 +225,8 @@ export default function App() {
             boxes={catalog.boxes}
             selectedId={selectedBoxId}
             onSelect={pickBox}
-            onCreate={(b) => persist(upsertBox(catalog, b))}
             onRemove={removeBoxById}
+            onAdd={() => setBoxFormOpen(true)}
           />
         </aside>
       </div>
@@ -243,6 +236,15 @@ export default function App() {
         existing={catalog.parts}
         onSubmit={(p) => persist(upsertPart(catalog, p))}
         onClose={() => setPartFormOpen(false)}
+      />
+      <BoxForm
+        open={boxFormOpen}
+        existing={catalog.boxes}
+        onSubmit={(b) => {
+          persist(upsertBox(catalog, b));
+          pickBox(b.id);
+        }}
+        onClose={() => setBoxFormOpen(false)}
       />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </main>
