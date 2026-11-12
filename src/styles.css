@@ -310,13 +310,54 @@ body {
 }
 
 .scene-wrap {
-  height: 340px;
-  display: grid;
-  place-items: center;
+  position: relative;
+  height: 380px;
+  overflow: hidden;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+}
+
+.scene-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.scene-placeholder {
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.scene-legend {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+  z-index: 1;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.legend-chip i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
 }
 
 .scene-placeholder {

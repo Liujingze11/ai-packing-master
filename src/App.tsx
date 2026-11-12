@@ -3,6 +3,7 @@ import BoxManager from './components/BoxManager';
 import CartPanel from './components/CartPanel';
 import ChatArea, { type ChatMessage } from './components/ChatArea';
 import PartForm from './components/PartForm';
+import PackingScene from './components/PackingScene';
 import PartsMenu from './components/PartsMenu';
 import SettingsPanel from './components/SettingsPanel';
 import boxesRaw from './data/boxes.csv?raw';
@@ -46,7 +47,13 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [mixedLayout, setMixedLayout] = useState<MixedLayout | null>(null);
-  const [sceneMeta, setSceneMeta] = useState<{ totalBoxes: number; skuCount: number; itemCount: number } | null>(null);
+  const [sceneMeta, setSceneMeta] = useState<{
+    totalBoxes: number;
+    skuCount: number;
+    itemCount: number;
+    skuNames: string[];
+  } | null>(null);
+  const [runId, setRunId] = useState(0);
 
   useEffect(() => {
     void window.packingAPI.getCatalog().then((c) => {
@@ -116,7 +123,9 @@ export default function App() {
           totalBoxes,
           skuCount: firstBox.placed.length,
           itemCount: firstBox.layout.items.length,
+          skuNames: firstBox.placed.map((p) => p.name),
         });
+        setRunId((r) => r + 1);
       } else {
         setMessages((m) => [...m, { role: 'ai', text: `⚠️ ${out.message}` }]);
       }
@@ -155,16 +164,17 @@ export default function App() {
         <section className="center-col">
           <div className="scene-wrap">
             {mixedLayout && sceneMeta ? (
-              <div className="scene-placeholder">
-                <p>
-                  共需 <strong>{sceneMeta.totalBoxes}</strong> 箱 · 混装{' '}
-                  <strong>{sceneMeta.skuCount}</strong> 种 · 本箱 <strong>{sceneMeta.itemCount}</strong>{' '}
-                  件
-                </p>
-                <p className="card-sub">3D 混装场景（下一任务接入）</p>
-              </div>
+              <PackingScene
+                key={runId}
+                layout={mixedLayout}
+                totalBoxes={sceneMeta.totalBoxes}
+                skuCount={sceneMeta.skuCount}
+                skuNames={sceneMeta.skuNames}
+              />
             ) : (
-              <p className="placeholder">3D 装箱模拟将在这里播放</p>
+              <div className="scene-placeholder">
+                <p className="placeholder">3D 装箱模拟将在这里播放</p>
+              </div>
             )}
           </div>
           <ChatArea messages={messages} canSend={canSend} busy={busy} onSend={(m) => void send(m)} />
