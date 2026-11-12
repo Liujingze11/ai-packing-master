@@ -8,21 +8,25 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onCreate: (box: BoxSpec) => void;
+  onRemove: (id: string) => void;
 }
 
-export default function BoxManager({ boxes, selectedId, onSelect, onCreate }: Props) {
+export default function BoxManager({ boxes, selectedId, onSelect, onCreate, onRemove }: Props) {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({ name: '', innerLength: '', innerWidth: '', innerHeight: '', maxLoad: '' });
   const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
-    const r = validateBox({
-      name: form.name,
-      innerLength: Number(form.innerLength),
-      innerWidth: Number(form.innerWidth),
-      innerHeight: Number(form.innerHeight),
-      maxLoad: form.maxLoad.trim() === '' ? undefined : Number(form.maxLoad),
-    });
+    const r = validateBox(
+      {
+        name: form.name,
+        innerLength: Number(form.innerLength),
+        innerWidth: Number(form.innerWidth),
+        innerHeight: Number(form.innerHeight),
+        maxLoad: form.maxLoad.trim() === '' ? undefined : Number(form.maxLoad),
+      },
+      boxes,
+    );
     if (!r.ok) {
       setError(r.error);
       return;
@@ -46,7 +50,7 @@ export default function BoxManager({ boxes, selectedId, onSelect, onCreate }: Pr
   return (
     <section className="box-manager">
       <h2>📦 箱子</h2>
-      <BoxPicker boxes={boxes} selectedId={selectedId} onSelect={onSelect} />
+      <BoxPicker boxes={boxes} selectedId={selectedId} onSelect={onSelect} onRemove={onRemove} />
 
       {formOpen ? (
         <div className="box-form">

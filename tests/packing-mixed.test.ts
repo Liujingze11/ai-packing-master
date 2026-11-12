@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { planMixedPacking, simulateMixedFill, type MixedOrderLine } from '../src/lib/packing-mixed';
+import {
+  legendNames,
+  planMixedPacking,
+  simulateMixedFill,
+  type MixedOrderLine,
+} from '../src/lib/packing-mixed';
 import type { BoxSpec, Part } from '../src/lib/types';
 
 const A001: Part = { id: 'A001', name: '齿轮箱', length: 100, width: 50, height: 30, weight: 2, material: '铝合金' };
@@ -76,5 +81,22 @@ describe('planMixedPacking', () => {
     const plan = planMixedPacking([], B02, 0.8);
     expect(plan.ok).toBe(false);
     if (!plan.ok) expect(plan.kind).toBe('empty_order');
+  });
+
+  it('图例名按 colorIndex 对齐（乱序订单：小件在前）', () => {
+    const shuffled: MixedOrderLine[] = [
+      { part: A005, quantity: 100 },
+      { part: A001, quantity: 10 },
+    ];
+    const plan = planMixedPacking(shuffled, B02, 0.8);
+    expect(plan.ok).toBe(true);
+    if (plan.ok) {
+      const names = legendNames(shuffled, plan.firstBox.layout);
+      // 数组下标 = colorIndex = 订单下标：A005→0、A001→1
+      expect(names[0]).toBe('垫片');
+      expect(names[1]).toBe('齿轮箱');
+      const a001 = plan.firstBox.layout.items.find((i) => i.colorIndex === 1);
+      expect(a001).toBeDefined();
+    }
   });
 });

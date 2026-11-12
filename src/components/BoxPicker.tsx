@@ -4,10 +4,11 @@ interface Props {
   boxes: BoxSpec[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onRemove?: (id: string) => void;
 }
 
 /** 外卖菜单式箱子列表：点卡片或「＋」即选中 */
-export default function BoxPicker({ boxes, selectedId, onSelect }: Props) {
+export default function BoxPicker({ boxes, selectedId, onSelect, onRemove }: Props) {
   if (boxes.length === 0) {
     return <p className="cart-empty">还没有箱子——新建一个，或载入示例数据</p>;
   }
@@ -26,6 +27,18 @@ export default function BoxPicker({ boxes, selectedId, onSelect }: Props) {
               {b.innerLength}×{b.innerWidth}×{b.innerHeight} mm · ≤{b.maxLoad} kg
             </span>
           </div>
+          {onRemove && (
+            <button
+              className="menu-remove"
+              title="删除"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(b.id);
+              }}
+            >
+              ✕
+            </button>
+          )}
           <button
             className="menu-add"
             title="选这个箱子"

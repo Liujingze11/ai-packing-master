@@ -4,11 +4,12 @@ import type { Part } from '../lib/types';
 
 interface Props {
   open: boolean;
+  existing: Part[];
   onSubmit: (part: Part) => void;
   onClose: () => void;
 }
 
-export default function PartForm({ open, onSubmit, onClose }: Props) {
+export default function PartForm({ open, existing, onSubmit, onClose }: Props) {
   const [form, setForm] = useState({
     name: '',
     length: '',
@@ -22,14 +23,17 @@ export default function PartForm({ open, onSubmit, onClose }: Props) {
   if (!open) return null;
 
   const submit = () => {
-    const r = validatePart({
-      name: form.name,
-      length: Number(form.length),
-      width: Number(form.width),
-      height: Number(form.height),
-      weight: Number(form.weight),
-      material: form.material,
-    });
+    const r = validatePart(
+      {
+        name: form.name,
+        length: Number(form.length),
+        width: Number(form.width),
+        height: Number(form.height),
+        weight: Number(form.weight),
+        material: form.material,
+      },
+      existing,
+    );
     if (!r.ok) {
       setError(r.error);
       return;

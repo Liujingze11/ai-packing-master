@@ -10,10 +10,11 @@ import SettingsPanel from './components/SettingsPanel';
 import boxesRaw from './data/boxes.csv?raw';
 import itemsRaw from './data/items.csv?raw';
 import { adjustLine } from './lib/cart';
-import { upsertBox, upsertPart } from './lib/catalog';
+import { removeBox, removePart, upsertBox, upsertPart } from './lib/catalog';
+import { boxToBoxSpec, itemToPart } from './lib/catalog-import';
 import { parseBoxes, parseItems } from './lib/csv';
 import { runMixedRecommendation } from './lib/mixed-flow';
-import type { MixedLayout, MixedOrderLine } from './lib/packing-mixed';
+import { legendNames, type MixedLayout, type MixedOrderLine } from './lib/packing-mixed';
 import type { BoxType, Catalog, CartLine, Item, Part } from './lib/types';
 
 function toPart(it: Item): Part {
@@ -78,12 +79,33 @@ export default function App() {
   };
 
   const importCsv = async () => {
-    const d = await window.packingAPI.importCsv();
-    if (!d) return;
-    let c = await window.packingAPI.getCatalog();
-    for (const it of d.items) c = upsertPart(c, toPart(it));
-    for (const b of d.boxes) c = upsertBox(c, toBoxSpec(b));
-    persist(c);
+    try {
+      const res = await window.packingAPI.importCsv();
+      if (!res) return;
+      if ('error' in res) {
+        setMessages((m) => [...m, { role: 'ai', text: `⚠️ 导入失败：${res.error}` }]);
+        return;
+      }
+      let c = await window.packingAPI.getCatalog();
+      for (const p of res.parts) c = upsertPart(c, p);
+      for (const b of res.boxes) c = upsertBox(c, b);
+      persist(c);
+    } catch (e) {
+      setMessages((m) => [
+        ...m,
+        { role: 'ai', text: `⚠️ 导入失败：${e instanceof Error ? e.message : String(e)}` },
+      ]);
+    }
+  };
+
+  const removePartById = (id: string) => {
+    persist(removePart(catalog, id));
+    setCart((cs) => cs.filter((l) => l.partId !== id));
+  };
+
+  const removeBoxById = (id: string) => {
+    persist(removeBox(catalog, id));
+    if (selectedBoxId === id) setSelectedBoxId(null);
   };
 
   const cartLines = cart
@@ -133,7 +155,7 @@ export default function App() {
           totalBoxes,
           skuCount: firstBox.placed.length,
           itemCount: firstBox.layout.items.length,
-          skuNames: firstBox.placed.map((p) => p.name),
+          skuNames: legendNames(order, firstBox.layout),
         });
         setRunId((r) => r + 1);
       } else {
@@ -164,7 +186,11 @@ export default function App() {
       <div className="workspace">
         <aside className="left-col">
           <h2>🍜 零件菜单</h2>
-          <PartsMenu parts={catalog.parts} onAdd={(id) => setCart((c) => adjustLine(c, id, 1))} />
+          <PartsMenu
+            parts={catalog.parts}
+            onAdd={(id) => setCart((c) => adjustLine(c, id, 1))}
+            onRemove={removePartById}
+          />
           <div className="left-actions">
             <button onClick={() => setPartFormOpen(true)}>＋ 添加零件</button>
             <button onClick={() => void loadSeed()}>载入示例数据</button>
@@ -207,12 +233,14 @@ export default function App() {
             selectedId={selectedBoxId}
             onSelect={pickBox}
             onCreate={(b) => persist(upsertBox(catalog, b))}
+            onRemove={removeBoxById}
           />
         </aside>
       </div>
 
       <PartForm
         open={partFormOpen}
+        existing={catalog.parts}
         onSubmit={(p) => persist(upsertPart(catalog, p))}
         onClose={() => setPartFormOpen(false)}
       />

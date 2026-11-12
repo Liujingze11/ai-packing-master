@@ -41,6 +41,22 @@ describe('validatePart', () => {
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.part.id.length).toBeGreaterThan(0);
   });
+
+  it('重名零件（不同 id）→ 中文提示', () => {
+    const r = validatePart(
+      { name: '齿轮箱', length: 1, width: 1, height: 1, weight: 1 },
+      [A001],
+    );
+    expect(r).toEqual({ ok: false, error: '已存在同名零件「齿轮箱」，请换个名字' });
+  });
+
+  it('同 id 更新不算重名（导入/更新场景）', () => {
+    const r = validatePart(
+      { id: 'A001', name: '齿轮箱', length: 100, width: 50, height: 30, weight: 2, material: '铝合金' },
+      [A001],
+    );
+    expect(r.ok).toBe(true);
+  });
 });
 
 describe('validateBox', () => {
@@ -53,6 +69,18 @@ describe('validateBox', () => {
   it('尺寸非正 / 承重为负 → 中文错误', () => {
     expect(validateBox({ id: 'B1', name: 'n', innerLength: -1, innerWidth: 2, innerHeight: 3 }).ok).toBe(false);
     expect(validateBox({ id: 'B1', name: 'n', innerLength: 1, innerWidth: 2, innerHeight: 3, maxLoad: -5 }).ok).toBe(false);
+  });
+
+  it('重名箱子（不同 id）→ 中文提示', () => {
+    const existing = validateBox({ id: 'B1', name: '小箱', innerLength: 300, innerWidth: 200, innerHeight: 150 });
+    expect(existing.ok).toBe(true);
+    if (!existing.ok) return;
+    const r = validateBox(
+      { name: '小箱', innerLength: 1, innerWidth: 2, innerHeight: 3 },
+      [existing.box],
+    );
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('小箱');
   });
 });
 

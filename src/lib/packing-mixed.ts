@@ -32,6 +32,15 @@ function itemVol(p: Part): number {
 }
 
 /**
+ * 图例名数组：下标 = colorIndex = 订单下标（未装入第一箱的 SKU 为 ''）。
+ * 渲染端按「下标 → 颜色」取色，保证乱序订单下图例与色块一致。
+ */
+export function legendNames(order: MixedOrderLine[], layout: MixedLayout): string[] {
+  const present = new Set(layout.items.map((i) => i.colorIndex));
+  return order.map((l, i) => (present.has(i) ? l.part.name : ''));
+}
+
+/**
  * 单箱混装模拟：
  * - SKU 按体积降序放置，每 SKU 独占若干水平层（层高=件高），层内网格 floor(内长/件长)×floor(内宽/件宽)
  * - heightBudget = innerHeight × margin，weightBudget = maxLoad × margin

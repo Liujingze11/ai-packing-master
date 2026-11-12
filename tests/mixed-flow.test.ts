@@ -130,4 +130,50 @@ describe('runMixedRecommendation', () => {
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.message).toContain('巨件');
   });
+
+  it('LLM 坏 JSON → 回退默认文案，数字不受影响', async () => {
+    const api: MixedApi = {
+      recommendMixed: () => Promise.resolve('抱歉，我无法处理这个请求'),
+    };
+    const out = await runMixedRecommendation(
+      {
+        order: mixedOrder,
+        box: B02,
+        boxes: [B01, B02],
+        margin: 0.8,
+        userMessage: '轻放',
+        mockMode: false,
+      },
+      api,
+    );
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.result.totalBoxes).toBe(1);
+      expect(out.result.firstBox.placed).toHaveLength(2);
+      expect(out.result.reply.reason).toContain('AI 文案');
+      expect(out.result.reply.strategy).toContain('轻放');
+    }
+  });
+
+  it('LLM 缺字段 → 空字段补默认文案', async () => {
+    const api: MixedApi = {
+      recommendMixed: () => Promise.resolve('{"推荐理由": "只写了理由"}'),
+    };
+    const out = await runMixedRecommendation(
+      {
+        order: mixedOrder,
+        box: B02,
+        boxes: [B01, B02],
+        margin: 0.8,
+        userMessage: '',
+        mockMode: false,
+      },
+      api,
+    );
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.result.reply.reason).toBe('只写了理由');
+      expect(out.result.reply.strategy).toContain('缓冲隔板');
+    }
+  });
 });

@@ -137,12 +137,14 @@ export default function PackingScene({ box, layout, totalBoxes, skuCount, skuNam
       )}
       {layout && skuNames && skuNames.length > 0 && (
         <div className="scene-legend">
-          {skuNames.map((name, i) => (
-            <span key={i} className="legend-chip">
-              <i style={{ background: SKU_COLORS[i % SKU_COLORS.length] }} />
-              {name}
-            </span>
-          ))}
+          {skuNames.map((name, i) =>
+            name ? (
+              <span key={i} className="legend-chip">
+                <i style={{ background: SKU_COLORS[i % SKU_COLORS.length] }} />
+                {name}
+              </span>
+            ) : null,
+          )}
         </div>
       )}
       <Canvas camera={{ position: [w * 1.1, h * 1.6, d * 1.4], fov: 45 }} dpr={[1, 2]}>
