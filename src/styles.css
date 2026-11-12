@@ -762,147 +762,44 @@ button {
   background: transparent;
 }
 
-/* ============ 游戏选武器式箱子切换器 ============ */
-.weapon-strip {
+/* ============ 透明「＋」（箱子展示区创建入口） ============ */
+.scene-ghost-add {
   position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 12px;
+  right: 14px;
   z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(18px) saturate(1.3);
-  -webkit-backdrop-filter: blur(18px) saturate(1.3);
-  border: 1px solid rgba(115, 81, 166, 0.16);
-  border-radius: 20px;
-  box-shadow: 0 16px 44px #33254c2b;
-}
-
-.weapon-strip.empty {
-  gap: 14px;
-}
-
-.weapon-arrow {
-  width: 36px;
-  height: 36px;
-  border: 0;
+  width: 42px;
+  height: 42px;
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
   border-radius: var(--radius-pill);
-  background: var(--accent-tint);
-  color: var(--accent);
-  font-size: 15px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.weapon-arrow:hover {
-  background: var(--accent);
-  color: #fff;
-  transform: scale(1.08);
-}
-
-.weapon-slot {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: rgba(47, 59, 82, 0.55);
+  font-size: 22px;
+  line-height: 1;
   cursor: pointer;
   transition: all 0.18s ease;
-  white-space: nowrap;
 }
 
-.weapon-slot.side {
-  padding: 8px 14px;
-  min-width: 72px;
-  max-width: 110px;
-  opacity: 0.45;
-  background: rgba(115, 81, 166, 0.08);
-  font-size: 12px;
-  overflow: hidden;
-}
-
-.weapon-slot.side:hover {
-  opacity: 0.85;
-}
-
-.weapon-slot.side strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.weapon-slot.current {
-  padding: 12px 26px;
-  min-width: 200px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
-  box-shadow: 0 10px 28px #7351a64d;
-  animation: weapon-pop 0.22s ease;
-}
-
-@keyframes weapon-pop {
-  0% {
-    transform: scale(0.92);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.weapon-slot.current strong {
-  font-size: 16px;
-}
-
-.weapon-slot.current span {
-  font-size: 11px;
-  opacity: 0.85;
-}
-
-.weapon-slot-icon {
-  font-size: 18px;
-  line-height: 1;
-}
-
-.weapon-add {
-  width: 36px;
-  height: 36px;
-  border: 1px dashed var(--accent);
-  border-radius: var(--radius-pill);
-  background: transparent;
+.scene-ghost-add:hover {
+  background: rgba(255, 255, 255, 0.55);
   color: var(--accent);
-  font-size: 19px;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  transform: scale(1.07);
 }
 
-.weapon-add:hover {
-  background: var(--accent);
-  color: #fff;
-}
-
-.weapon-big-add {
+.scene-ghost-add.big {
+  top: 50%;
+  right: auto;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 84px;
   height: 84px;
-  border: 0;
-  border-radius: 24px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
   font-size: 42px;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 14px 36px #7351a64d;
-  transition: all 0.18s ease;
+  border-radius: 26px;
+  border-width: 2px;
 }
 
-.weapon-big-add:hover {
-  transform: scale(1.06);
-}
-
-.weapon-hint {
-  font-size: 13px;
-  color: var(--text-dim);
+.scene-ghost-add.big:hover {
+  transform: translate(-50%, -50%) scale(1.05);
 }

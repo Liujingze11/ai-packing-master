@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import BoxManager from './components/BoxManager';
-import BoxCarousel from './components/BoxCarousel';
 import BoxForm from './components/BoxForm';
 import CartPanel from './components/CartPanel';
 import ChatArea, { type ChatMessage } from './components/ChatArea';
@@ -210,12 +209,13 @@ export default function App() {
               skuCount={sceneMeta?.skuCount}
               skuNames={sceneMeta?.skuNames}
             />
-            <BoxCarousel
-              boxes={catalog.boxes}
-              selectedId={selectedBoxId}
-              onSelect={pickBox}
-              onAdd={() => setBoxFormOpen(true)}
-            />
+            <button
+              className={`scene-ghost-add${selectedBox ? '' : ' big'}`}
+              title="新建箱子"
+              onClick={() => setBoxFormOpen(true)}
+            >
+              ＋
+            </button>
           </div>
           <ChatArea messages={messages} canSend={canSend} busy={busy} onSend={(m) => void send(m)} />
         </section>

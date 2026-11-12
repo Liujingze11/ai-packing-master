@@ -110,7 +110,7 @@ export default function PackingScene({ box, layout, totalBoxes, skuCount, skuNam
   if (!boxSize) {
     return (
       <div className="scene-placeholder">
-        <p className="placeholder">点右上「＋」选择箱子，选中后这里预览空箱</p>
+        <p className="placeholder">点「＋」创建箱子，创建后这里预览空箱</p>
       </div>
     );
   }
