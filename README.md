@@ -1,4 +1,4 @@
-# 📦 AI 装箱引擎（SmartPackingEngine Desktop Demo v2）
+# 📦 AI Packing Master（AI 打包大师）
 
 An AI-assisted mixed-packing desktop demo with a food-ordering-style UI: pick parts like menu items, choose a box, chat to start — then watch a 3D mixed-loading simulation. Electron + React + TypeScript + Three.js.
 

@@ -16,7 +16,7 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
-    title: 'AI 装箱引擎',
+    title: 'AI Packing Master',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

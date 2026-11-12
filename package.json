@@ -1,6 +1,6 @@
 {
-  "name": "ai-packing-engine",
-  "productName": "AI 装箱引擎",
+  "name": "ai-packing-master",
+  "productName": "AI Packing Master",
   "version": "0.1.0",
   "private": true,
   "description": "AI 装箱推荐桌面演示（SmartPackingEngine Desktop Demo）",

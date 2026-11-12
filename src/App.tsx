@@ -205,8 +205,8 @@ export default function App() {
     <main className="app">
       <header className="app-header">
         <h1>
-          📦 AI 装箱引擎
-          <span className="tagline">混装演示 · 外卖式点单</span>
+          📦 AI Packing Master
+          <span className="tagline">AI 打包大师 · 混装演示</span>
         </h1>
         <button className="gear" onClick={() => setSettingsOpen(true)} title="设置">
           ⚙️ 设置
