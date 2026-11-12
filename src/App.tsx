@@ -1,46 +1,72 @@
-import { useState } from 'react';
-import InputPanel from './components/InputPanel';
-import PackingScene from './components/PackingScene';
-import ResultCards from './components/ResultCards';
+import { useEffect, useState } from 'react';
+import CartPanel from './components/CartPanel';
+import PartForm from './components/PartForm';
+import PartsMenu from './components/PartsMenu';
 import SettingsPanel from './components/SettingsPanel';
 import boxesRaw from './data/boxes.csv?raw';
-import historyRaw from './data/history.csv?raw';
 import itemsRaw from './data/items.csv?raw';
-import { parseBoxes, parseHistory, parseItems } from './lib/csv';
-import { runRecommendation, type FlowResult } from './lib/recommend-flow';
-import type { Dataset } from './lib/types';
+import { upsertBox, upsertPart } from './lib/catalog';
+import { parseBoxes, parseItems } from './lib/csv';
+import { adjustLine } from './lib/cart';
+import type { BoxType, Catalog, CartLine, Item, Part } from './lib/types';
+
+function toPart(it: Item): Part {
+  return {
+    id: it.id,
+    name: it.id,
+    length: it.length,
+    width: it.width,
+    height: it.height,
+    weight: it.weight,
+    material: it.material,
+  };
+}
+
+function toBoxSpec(b: BoxType) {
+  return {
+    id: b.id,
+    name: b.id,
+    innerLength: b.innerLength,
+    innerWidth: b.innerWidth,
+    innerHeight: b.innerHeight,
+    maxLoad: b.maxLoad,
+  };
+}
 
 export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [dataset, setDataset] = useState<Dataset>(() => ({
-    items: parseItems(itemsRaw),
-    boxes: parseBoxes(boxesRaw),
-    history: parseHistory(historyRaw),
-  }));
-  const [result, setResult] = useState<FlowResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [runId, setRunId] = useState(0);
-  const [lastArgs, setLastArgs] = useState<{ itemId: string; quantity: number } | null>(null);
+  const [partFormOpen, setPartFormOpen] = useState(false);
+  const [catalog, setCatalog] = useState<Catalog>({ parts: [], boxes: [] });
+  const [cart, setCart] = useState<CartLine[]>([]);
 
-  const run = async (itemId: string, quantity: number) => {
-    setLastArgs({ itemId, quantity });
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    try {
-      const settings = await window.packingAPI.getSettings();
-      const out = await runRecommendation(dataset, itemId, quantity, settings, window.packingAPI);
-      if (out.ok) {
-        setResult(out.result);
-        setRunId((r) => r + 1);
-      } else setError(out.error.message);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    void window.packingAPI.getCatalog().then(setCatalog);
+  }, []);
+
+  const persist = (c: Catalog) => {
+    setCatalog(c);
+    void window.packingAPI.saveCatalog(c);
   };
+
+  const loadSeed = async () => {
+    let c = await window.packingAPI.getCatalog();
+    for (const it of parseItems(itemsRaw)) c = upsertPart(c, toPart(it));
+    for (const b of parseBoxes(boxesRaw)) c = upsertBox(c, toBoxSpec(b));
+    persist(c);
+  };
+
+  const importCsv = async () => {
+    const d = await window.packingAPI.importCsv();
+    if (!d) return;
+    let c = await window.packingAPI.getCatalog();
+    for (const it of d.items) c = upsertPart(c, toPart(it));
+    for (const b of d.boxes) c = upsertBox(c, toBoxSpec(b));
+    persist(c);
+  };
+
+  const cartLines = cart
+    .map((l) => ({ part: catalog.parts.find((p) => p.id === l.partId), quantity: l.quantity }))
+    .filter((l): l is { part: Part; quantity: number } => Boolean(l.part));
 
   return (
     <main className="app">
@@ -52,43 +78,31 @@ export default function App() {
       </header>
 
       <div className="workspace">
-        <InputPanel
-          onSearch={(itemId, quantity) => void run(itemId, quantity)}
-          onDataset={(d) => {
-            setDataset(d);
-            setResult(null);
-            setError(null);
-          }}
-          loading={loading}
-        />
+        <aside className="left-col">
+          <h2>🍜 零件菜单</h2>
+          <PartsMenu parts={catalog.parts} onAdd={(id) => setCart((c) => adjustLine(c, id, 1))} />
+          <div className="left-actions">
+            <button onClick={() => setPartFormOpen(true)}>＋ 添加零件</button>
+            <button onClick={() => void loadSeed()}>载入示例数据</button>
+            <button onClick={() => void importCsv()}>📂 导入 CSV</button>
+          </div>
+          <h2>🧺 订单</h2>
+          <CartPanel
+            lines={cartLines}
+            onAdjust={(id, d) => setCart((c) => adjustLine(c, id, d))}
+          />
+        </aside>
 
         <section className="output">
-          {error && (
-            <div className="error-bar">
-              <span>⚠️ {error}</span>
-              {lastArgs && (
-                <button onClick={() => void run(lastArgs.itemId, lastArgs.quantity)}>重试</button>
-              )}
-            </div>
-          )}
-          {result && (
-            <>
-              <PackingScene
-                key={runId}
-                layout={result.layout}
-                perBoxCount={result.recommendation.perBoxCount}
-                totalBoxes={result.recommendation.totalBoxes}
-              />
-              <ResultCards recommendation={result.recommendation} item={result.item} />
-            </>
-          )}
-          {!error && !result && !loading && (
-            <p className="placeholder">输入零件号和数量，开始推荐装箱方案。</p>
-          )}
-          {loading && <p className="placeholder">⏳ 正在分析并生成推荐…</p>}
+          <p className="placeholder">v2 交互建设中：箱子管理与 AI 对话区即将上线。</p>
         </section>
       </div>
 
+      <PartForm
+        open={partFormOpen}
+        onSubmit={(p) => persist(upsertPart(catalog, p))}
+        onClose={() => setPartFormOpen(false)}
+      />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </main>
   );
