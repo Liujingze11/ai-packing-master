@@ -24,7 +24,7 @@ export default function BoxPicker({ boxes, selectedId, onSelect, onRemove }: Pro
           <div className="menu-info">
             <strong>{b.name}</strong>
             <span>
-              {b.innerLength}×{b.innerWidth}×{b.innerHeight} mm · ≤{b.maxLoad} kg
+              {b.innerLength}×{b.innerWidth}×{b.innerHeight} mm · ≤{b.maxLoad} kg · {b.material}
             </span>
           </div>
           {onRemove && (

@@ -32,8 +32,17 @@ export function boxToBoxSpec(b: {
   innerWidth: number;
   innerHeight: number;
   maxLoad: number;
+  material?: string;
 }): BoxSpec {
-  return { id: b.id, name: b.id, innerLength: b.innerLength, innerWidth: b.innerWidth, innerHeight: b.innerHeight, maxLoad: b.maxLoad };
+  return {
+    id: b.id,
+    name: b.id,
+    innerLength: b.innerLength,
+    innerWidth: b.innerWidth,
+    innerHeight: b.innerHeight,
+    maxLoad: b.maxLoad,
+    material: b.material && b.material.trim() ? b.material.trim() : '纸箱',
+  };
 }
 
 /**

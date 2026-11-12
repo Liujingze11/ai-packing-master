@@ -17,6 +17,7 @@ export default function BoxForm({ open, existing, onSubmit, onClose }: Props) {
     innerWidth: '',
     innerHeight: '',
     maxLoad: '',
+    material: '',
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -30,6 +31,7 @@ export default function BoxForm({ open, existing, onSubmit, onClose }: Props) {
         innerWidth: Number(form.innerWidth),
         innerHeight: Number(form.innerHeight),
         maxLoad: form.maxLoad.trim() === '' ? undefined : Number(form.maxLoad),
+        material: form.material.trim() === '' ? undefined : form.material,
       },
       existing,
     );
@@ -38,7 +40,7 @@ export default function BoxForm({ open, existing, onSubmit, onClose }: Props) {
       return;
     }
     onSubmit(r.box);
-    setForm({ name: '', innerLength: '', innerWidth: '', innerHeight: '', maxLoad: '' });
+    setForm({ name: '', innerLength: '', innerWidth: '', innerHeight: '', maxLoad: '', material: '' });
     setError(null);
     onClose();
   };
@@ -64,7 +66,10 @@ export default function BoxForm({ open, existing, onSubmit, onClose }: Props) {
           {field('innerWidth', '宽 mm', '300')}
           {field('innerHeight', '高 mm', '250')}
         </div>
-        {field('maxLoad', '最大承重 kg', '默认 50')}
+        <div className="form-row">
+          {field('maxLoad', '最大承重 kg', '默认 50')}
+          {field('material', '材质', '纸箱 / 木箱 / 塑料箱 / 金属箱')}
+        </div>
         {error && <div className="field-error">{error}</div>}
         <div className="settings-actions">
           <button onClick={onClose}>取消</button>

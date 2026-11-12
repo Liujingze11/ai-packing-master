@@ -53,13 +53,14 @@ export function parseItems(csv: string): Item[] {
   }));
 }
 
-export function parseBoxes(csv: string): BoxType[] {
+export function parseBoxes(csv: string): Array<BoxType & { material: string }> {
   return parseRows(csv).map((row) => ({
     id: str(row, '箱型', '箱型表'),
     innerLength: num(row, '内部长度(mm)', '箱型表'),
     innerWidth: num(row, '内部宽度(mm)', '箱型表'),
     innerHeight: num(row, '内部高度(mm)', '箱型表'),
     maxLoad: num(row, '最大承重(kg)', '箱型表'),
+    material: row['材质'] && row['材质'].trim() ? row['材质'].trim() : '纸箱',
   }));
 }
 

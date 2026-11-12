@@ -10,7 +10,7 @@ import type { BoxSpec, Part } from '../src/lib/types';
 const A001: Part = { id: 'A001', name: '齿轮箱', length: 100, width: 50, height: 30, weight: 2, material: '铝合金' };
 const A005: Part = { id: 'A005', name: '垫片', length: 40, width: 40, height: 5, weight: 0.05, material: '不锈钢' };
 const HUGE: Part = { id: 'X9', name: '巨件', length: 500, width: 500, height: 500, weight: 1, material: '钢' };
-const B02: BoxSpec = { id: 'B02', name: '中箱', innerLength: 400, innerWidth: 300, innerHeight: 250, maxLoad: 50 };
+const B02: BoxSpec = { id: 'B02', name: '中箱', innerLength: 400, innerWidth: 300, innerHeight: 250, maxLoad: 50, material: '塑料箱' };
 
 const order: MixedOrderLine[] = [
   { part: A001, quantity: 10 },

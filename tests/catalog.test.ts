@@ -60,10 +60,26 @@ describe('validatePart', () => {
 });
 
 describe('validateBox', () => {
-  it('缺 maxLoad 默认 50', () => {
+  it('缺 maxLoad 默认 50，缺材质默认纸箱', () => {
     const r = validateBox({ id: 'B1', name: '小箱', innerLength: 300, innerWidth: 200, innerHeight: 150 });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.box.maxLoad).toBe(50);
+    if (r.ok) {
+      expect(r.box.maxLoad).toBe(50);
+      expect(r.box.material).toBe('纸箱');
+    }
+  });
+
+  it('材质可指定（如 木箱）', () => {
+    const r = validateBox({
+      id: 'B2',
+      name: '木箱',
+      innerLength: 300,
+      innerWidth: 200,
+      innerHeight: 150,
+      material: '木箱',
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.box.material).toBe('木箱');
   });
 
   it('尺寸非正 / 承重为负 → 中文错误', () => {

@@ -29,7 +29,7 @@ function toPart(it: Item): Part {
   };
 }
 
-function toBoxSpec(b: BoxType) {
+function toBoxSpec(b: BoxType & { material?: string }) {
   return {
     id: b.id,
     name: b.id,
@@ -37,6 +37,7 @@ function toBoxSpec(b: BoxType) {
     innerWidth: b.innerWidth,
     innerHeight: b.innerHeight,
     maxLoad: b.maxLoad,
+    material: b.material && b.material.trim() ? b.material.trim() : '纸箱',
   };
 }
 

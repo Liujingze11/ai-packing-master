@@ -50,6 +50,7 @@ export interface BoxSpec {
   innerWidth: number;
   innerHeight: number;
   maxLoad: number;
+  material: string;
 }
 
 export interface Catalog {

@@ -82,17 +82,48 @@ function AnimatedItems({ layout }: { layout: MixedLayout }) {
   );
 }
 
-function Crate({ boxSize }: { boxSize: [number, number, number] }) {
+/** 材质 → 箱体外观（颜色/透明度/金属度/粗糙度/线框色） */
+function crateStyle(material: string): {
+  color: string;
+  opacity: number;
+  metalness: number;
+  roughness: number;
+  edge: string;
+} {
+  const m = material.toLowerCase();
+  if (/纸|cardboard|paper|carton/.test(m)) {
+    return { color: '#c8a27a', opacity: 0.32, metalness: 0, roughness: 0.9, edge: '#a97f52' };
+  }
+  if (/木|wood/.test(m)) {
+    return { color: '#a9744f', opacity: 0.42, metalness: 0, roughness: 0.8, edge: '#7d5436' };
+  }
+  if (/塑|plastic/.test(m)) {
+    return { color: '#6aa5d8', opacity: 0.3, metalness: 0.05, roughness: 0.45, edge: '#3f7cb5' };
+  }
+  if (/金属|铁|钢|铝|metal|steel|iron/.test(m)) {
+    return { color: '#9aa7b8', opacity: 0.5, metalness: 0.65, roughness: 0.35, edge: '#5f7186' };
+  }
+  return { color: '#b9a8d4', opacity: 0.14, metalness: 0.1, roughness: 0.6, edge: '#7351a6' };
+}
+
+function Crate({ boxSize, material }: { boxSize: [number, number, number]; material: string }) {
   const [w, h, d] = boxSize;
+  const style = crateStyle(material);
   return (
     <group position={[0, h / 2, 0]}>
       <mesh>
         <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial color="#b9a8d4" transparent opacity={0.14} />
+        <meshStandardMaterial
+          color={style.color}
+          transparent
+          opacity={style.opacity}
+          metalness={style.metalness}
+          roughness={style.roughness}
+        />
       </mesh>
       <lineSegments>
         <edgesGeometry args={[new THREE.BoxGeometry(w, h, d)]} />
-        <lineBasicMaterial color="#7351a6" />
+        <lineBasicMaterial color={style.edge} />
       </lineSegments>
     </group>
   );
@@ -152,7 +183,7 @@ export default function PackingScene({ box, layout, totalBoxes, skuCount, skuNam
         <ambientLight intensity={0.65} />
         <directionalLight position={[w * 1.2, h * 2.4, d * 1.1]} intensity={0.95} />
         <directionalLight position={[-w, h * 1.2, -d]} intensity={0.35} />
-        <Crate boxSize={boxSize} />
+        <Crate boxSize={boxSize} material={box?.material ?? '纸箱'} />
         {layout && <AnimatedItems key={replay} layout={layout} />}
         <OrbitControls makeDefault target={[0, h / 2, 0]} minDistance={w * 0.5} maxDistance={w * 5} />
         <gridHelper args={[Math.max(w, d) * 3, 12, '#cbd5e1', '#e2e8f0']} position={[0, -0.5, 0]} />

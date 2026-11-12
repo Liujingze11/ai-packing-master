@@ -42,9 +42,17 @@ describe('parseItems', () => {
 });
 
 describe('parseBoxes', () => {
-  it('解析箱型表：中文表头映射到 BoxType 字段', () => {
+  it('解析箱型表：中文表头映射到 BoxType 字段，无材质列默认纸箱', () => {
     expect(parseBoxes(BOXES_CSV)).toEqual([
-      { id: 'B02', innerLength: 400, innerWidth: 300, innerHeight: 250, maxLoad: 50 },
+      { id: 'B02', innerLength: 400, innerWidth: 300, innerHeight: 250, maxLoad: 50, material: '纸箱' },
+    ]);
+  });
+
+  it('可选材质列映射到 material', () => {
+    const csv = `箱型,内部长度(mm),内部宽度(mm),内部高度(mm),最大承重(kg),材质
+B03,600,400,300,80,木箱`;
+    expect(parseBoxes(csv)).toEqual([
+      { id: 'B03', innerLength: 600, innerWidth: 400, innerHeight: 300, maxLoad: 80, material: '木箱' },
     ]);
   });
 
@@ -83,7 +91,7 @@ describe('内置仿真数据', () => {
     });
   });
 
-  it('boxes.csv：3 个箱型，B02 数值与规格一致', () => {
+  it('boxes.csv：3 个箱型，B02 数值与规格一致（含材质）', () => {
     const boxes = parseBoxes(readData('boxes.csv'));
     expect(boxes).toHaveLength(3);
     expect(boxes[1]).toEqual({
@@ -92,6 +100,7 @@ describe('内置仿真数据', () => {
       innerWidth: 300,
       innerHeight: 250,
       maxLoad: 50,
+      material: '塑料箱',
     });
   });
 

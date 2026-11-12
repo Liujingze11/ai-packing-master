@@ -55,7 +55,8 @@ export function validateBox(
   if (existing.some((b) => b.id !== id && b.name === name)) {
     return { ok: false, error: `已存在同名箱子「${name}」，请换个名字` };
   }
-  return { ok: true, box: { id, name, innerLength, innerWidth, innerHeight, maxLoad } };
+  const material = typeof r.material === 'string' && r.material.trim() ? r.material.trim() : '纸箱';
+  return { ok: true, box: { id, name, innerLength, innerWidth, innerHeight, maxLoad, material } };
 }
 
 export function upsertPart(catalog: Catalog, part: Part): Catalog {
